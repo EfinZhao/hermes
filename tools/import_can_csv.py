@@ -11,7 +11,7 @@ Rules
     they can be appended later under new ids.
   * Idempotent: a signal already in the registry (same CAN address) is skipped, existing
     channels are never touched, ids are never reassigned.
-  * New channels are `planned` unless listed in DEMO_ACTIVE. M130 ids start at 300, E888 at 1000.
+  * New channels are `planned` unless listed in ACTIVE_CHANNELS. M130 ids start at 300, E888 at 1000.
   * rate_hz / priority / live are placeholders: the DBC has no cycle times.
   * The text is appended so the comments in registry.yaml survive.
 """
@@ -36,8 +36,9 @@ M130_FIRST_ID, E888_FIRST_ID = 300, 1000
 PDM_MIRRORS = {0x118, 0x119, 0x11A}   # lower-resolution copies of M130 data
 KEEP_UNITLESS = {"Lap_Number"}
 
-# signals that become `active` for the Oct 21 demo, with their hand-picked names
-DEMO_ACTIVE = {
+# signals imported as `active` (enabled) rather than `planned`, with their hand-picked names.
+# Edit this set for your own setup.
+ACTIVE_CHANNELS = {
     "Throttle_Position": "throttle.position_pct",
     "Inlet_Manifold_Pressure": "intake.manifold_kpa",
     "Wheel_Speed_Front_Left": "wheel.speed_fl_kmh",
@@ -152,8 +153,8 @@ def main() -> int:
     args = ap.parse_args()
 
     sys.path.insert(0, str(MSG))
-    import afr_msg
-    reg = afr_msg.load_registry(str(REGISTRY))
+    import msgcodec
+    reg = msgcodec.load_registry(str(REGISTRY))
     m130 = cantools.database.load_file(str(M130_DBC))
     e888 = cantools.database.load_file(str(E888_DBC))
     for off in E888_OFFSETS:
@@ -170,8 +171,8 @@ def main() -> int:
     for key, sig, addr, e888_flag in candidates(m130, e888):
         if key in have:          # e.g. the hand-written channels 100-102
             continue
-        active = sig.name in DEMO_ACTIVE
-        name = DEMO_ACTIVE.get(sig.name) or NAME_OVERRIDES.get(sig.name) or auto_name(sig.name, sig.unit, e888_flag)
+        active = sig.name in ACTIVE_CHANNELS
+        name = ACTIVE_CHANNELS.get(sig.name) or NAME_OVERRIDES.get(sig.name) or auto_name(sig.name, sig.unit, e888_flag)
         if name in names:
             raise SystemExit(f"name collision: {name} ({sig.name})")
         chid = next_id[e888_flag]
@@ -186,7 +187,7 @@ def main() -> int:
     text = REGISTRY.read_text()
     text = re.sub(r"^registry_version: \d+", f"registry_version: {reg['registry_version'] + 1}", text, count=1, flags=re.M)
     if "e888_base_id" not in text:
-        text = re.sub(r"^(device_id: .*)$", r"\1\ne888_base_id: 0xF0   # E888 CAN base id; one of 0xF0/F4/F8/FC (unconfirmed, see #1)",
+        text = re.sub(r"^(device_id: .*)$", r"\1\ne888_base_id: 0xF0   # E888 CAN base id; one of 0xF0/F4/F8/FC, match your unit's configuration",
                       text, count=1, flags=re.M)
     text = text.rstrip("\n") + "\n\n  # --- imported from the M130 / E888 DBCs by tools/import_can_csv.py ---\n" + "\n".join(out)
     REGISTRY.write_text(text)

@@ -1,7 +1,7 @@
 [project]
 name = "hermes"
 version = "0.1.0"
-description = "AFR-20 messaging system"
+description = "Versioned binary telemetry messaging for CAN-based vehicles"
 requires-python = ">=3.11"
 dependencies = ["pyyaml"]
 

@@ -1,7 +1,7 @@
 """Packet codec: encode/decode, packetizer, ring buffer, sequence gaps."""
 import pytest
 
-import afr_msg as m
+import msgcodec as m
 
 
 def test_sizes():
@@ -28,10 +28,10 @@ def test_crc_vector():
 
 
 def test_spec_example_packet():
-    """The 33-byte example from the spec: channel 100 = 8000.0 at 1000 ms."""
-    header = "20 af 01 00 14 00 01 00 00 00 00 00 e8 03 00 00 01 00 09 00"
+    """The 33-byte example from the spec: device 20, channel 100 = 8000.0 at 1000 ms."""
+    header = "48 4d 01 00 14 00 01 00 00 00 00 00 e8 03 00 00 01 00 09 00"
     record = "64 00 00 00 00 00 fa 45 00"
-    crc = "92 6e be fa"
+    crc = "f6 19 66 76"
     want = bytes.fromhex(f"{header} {record} {crc}")
     (buf,) = m.Packetizer(device_id=20, registry_version=1).build(m.DATA, [(1000, 100, 8000.0, 0)])
     assert buf == want

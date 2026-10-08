@@ -1,6 +1,7 @@
-"""AFR-20 messaging: reference implementation of the packet spec (SPEC.md).
+"""Reference implementation of the packet spec: packet codec, packetizer, ring buffer,
+CAN signal extraction and registry loading.
 
-This is the *specification in executable form*. The ESP32 firmware must produce and
+This is the *specification in executable form*. Any firmware or receiver must produce and
 accept exactly the bytes this module does. All multi-byte fields are little-endian.
 """
 from __future__ import annotations
@@ -13,7 +14,7 @@ from dataclasses import dataclass, field
 import yaml
 
 # ---------------------------------------------------------------- constants
-MAGIC = 0xAF20
+MAGIC = 0x4D48         # little-endian on the wire: bytes 48 4D, ASCII "HM"
 FORMAT_VERSION = 1
 
 # message types

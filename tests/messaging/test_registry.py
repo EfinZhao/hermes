@@ -4,7 +4,7 @@ import random
 import pytest
 import yaml
 
-import afr_msg as m
+import msgcodec as m
 from conftest import MESSAGING
 
 

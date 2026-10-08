@@ -1,10 +1,10 @@
-"""Shared fixtures. `messaging/` is on sys.path via pyproject.toml, so tests `import afr_msg`."""
+"""Shared fixtures. `messaging/` is on sys.path via pyproject.toml, so tests `import msgcodec`."""
 from pathlib import Path
 
 import cantools
 import pytest
 
-import afr_msg
+import msgcodec
 
 ROOT = Path(__file__).resolve().parent.parent
 MESSAGING = ROOT / "messaging"
@@ -14,7 +14,7 @@ E888_DBC = MESSAGING / "dbc" / "E8xx.dbc"
 
 @pytest.fixture(scope="session")
 def registry():
-    return afr_msg.load_registry(str(MESSAGING / "registry.yaml"))
+    return msgcodec.load_registry(str(MESSAGING / "registry.yaml"))
 
 
 @pytest.fixture(scope="session")

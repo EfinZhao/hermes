@@ -1,4 +1,4 @@
-# AFR-20 channel registry  (the "services.py" of our messaging system)
+# Channel registry  (the "services.py" of our messaging system)
 #
 # RULES (cereal-style, so old logs stay readable):
 #   1. A channel `id` is permanent. Never reuse it, never renumber it.
@@ -12,12 +12,12 @@
 #      (e.g. `_rpm`, `_c`, `_kpa`, `_mm`).
 
 registry_version: 2
-device_id: 20          # 1 byte in every packet header; identifies the board/car
-e888_base_id: 0xF0   # E888 CAN base id; one of 0xF0/F4/F8/FC (unconfirmed, see #1)
+device_id: 20          # 1 byte in every packet header. Set a UNIQUE id per device/car (20 is just the example).
+e888_base_id: 0xF0   # E888 CAN base id; one of 0xF0/F4/F8/FC, match your unit's configuration
 
 # ---------------------------------------------------------------------------
 # PARAMS: tunable settings. These can be changed with a CONFIG message
-# (later: from the pit wall dashboard). Server rejects values outside min/max.
+# (later: from a remote dashboard). Server rejects values outside min/max.
 # ---------------------------------------------------------------------------
 params:
   - id: 1
@@ -48,11 +48,11 @@ params:
 #   name        unambiguous, dotted, lowercase
 #   unit        string
 #   source      can | adc | i2c | synthetic
-#   rate_hz     expected sample rate (used by the pit wall for staleness checks)
+#   rate_hz     expected sample rate (used by the receiver for staleness checks)
 #   priority    0 = critical (send every sample live)
 #               1 = normal   (send every sample live, dropped first under load)
 #               2 = low      (send only every `live_decimate`-th sample)
-#   live        send over LTE?          (false = SD card only)
+#   live        send over the live link? (false = SD card only)
 #   log         write to SD card?
 #   live_decimate  (priority 2) keep 1 of every N samples live
 #   min / max   valid range; a value outside it gets the CLAMPED quality flag
