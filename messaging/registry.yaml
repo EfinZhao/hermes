@@ -11,8 +11,9 @@
 #   7. All values are float32 in SI units unless the name says otherwise
 #      (e.g. `_rpm`, `_c`, `_kpa`, `_mm`).
 
-registry_version: 1
+registry_version: 2
 device_id: 20          # 1 byte in every packet header; identifies the board/car
+e888_base_id: 0xF0   # E888 CAN base id; one of 0xF0/F4/F8/FC (unconfirmed, see #1)
 
 # ---------------------------------------------------------------------------
 # PARAMS: tunable settings. These can be changed with a CONFIG message
@@ -141,3 +142,2370 @@ channels:
     max: 100
     status: planned
     src: { adc_channel: 0, scale: 0.0305, offset: 0.0 }   # placeholder calibration
+
+  # --- imported from the M130 / E888 DBCs by tools/import_can_csv.py ---
+  - id: 300
+    name: intake.manifold_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: true
+    log: true
+    min: 0.0
+    max: 500.0
+    status: active
+    src: { can_id: 0x640, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 301
+    name: inlet.air_temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -40.0
+    max: 120.0
+    status: planned
+    src: { can_id: 0x640, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 302
+    name: throttle.position_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: true
+    log: true
+    min: 0.0
+    max: 100.0
+    status: active
+    src: { can_id: 0x640, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 303
+    name: fuel.volume_ul
+    unit: "ul"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 500.0
+    status: planned
+    src: { can_id: 0x641, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 304
+    name: fuel.mixture_aim_lambda
+    unit: "lambda"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 2.0
+    status: planned
+    src: { can_id: 0x641, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 305
+    name: fuel.pressure_sensor_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1000.0
+    status: planned
+    src: { can_id: 0x641, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 306
+    name: fuel.injector_primary_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x641, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 307
+    name: engine.efficiency_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 160.0
+    status: planned
+    src: { can_id: 0x641, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 308
+    name: throttle.pedal_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x642, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 309
+    name: engine.load_mg
+    unit: "mg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1000.0
+    status: planned
+    src: { can_id: 0x642, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 310
+    name: ignition.timing_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -100.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x642, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 311
+    name: fuel.timing_primary_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -720.0
+    max: 720.0
+    status: planned
+    src: { can_id: 0x642, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 312
+    name: ignition.cylinder_1_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 313
+    name: ignition.cylinder_2_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 314
+    name: ignition.cylinder_3_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 315
+    name: ignition.cylinder_4_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 316
+    name: ignition.cylinder_5_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 317
+    name: ignition.cylinder_6_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 318
+    name: ignition.cylinder_7_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 319
+    name: ignition.cylinder_8_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x643, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 320
+    name: ignition.output_cut_average_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x644, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 321
+    name: fuel.output_cut_average_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x644, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 322
+    name: fuel.cyl_1_prim_output_pls_wdth_ms
+    unit: "ms"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x644, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 323
+    name: engine.oil_pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x644, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 324
+    name: boost.pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1000.0
+    status: planned
+    src: { can_id: 0x645, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 325
+    name: boost.aim_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1000.0
+    status: planned
+    src: { can_id: 0x645, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 326
+    name: boost.actuator_output_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x645, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 327
+    name: gear.lever_force_sensor_n
+    unit: "N"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -635.0
+    max: 635.0
+    status: planned
+    src: { can_id: 0x645, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: true, scale: 5.0, offset: 0.0 }
+
+  - id: 328
+    name: inlet.camshaft_aim_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -60.0
+    max: 60.0
+    status: planned
+    src: { can_id: 0x646, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 329
+    name: inlet.camshaft_bank_1_position_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -60.0
+    max: 60.0
+    status: planned
+    src: { can_id: 0x646, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 330
+    name: inlet.camshaft_bank_2_position_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -60.0
+    max: 60.0
+    status: planned
+    src: { can_id: 0x646, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 331
+    name: inlet.cam_bk_1_output_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x646, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 332
+    name: inlet.cam_bk_2_output_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x646, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 333
+    name: exhaust.camshaft_aim_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -60.0
+    max: 60.0
+    status: planned
+    src: { can_id: 0x647, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 334
+    name: exhaust.camshaft_bank_1_position_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -60.0
+    max: 60.0
+    status: planned
+    src: { can_id: 0x647, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 335
+    name: exhaust.camshaft_bank_2_position_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -60.0
+    max: 60.0
+    status: planned
+    src: { can_id: 0x647, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 336
+    name: exh.cam_bk_1_output_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x647, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 337
+    name: exh.cam_bk_2_output_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x647, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 338
+    name: wheel.speed_fl_kmh
+    unit: "km/h"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: true
+    log: true
+    min: 0.0
+    max: 340.0
+    status: active
+    src: { can_id: 0x648, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 339
+    name: wheel.speed_fr_kmh
+    unit: "km/h"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 340.0
+    status: planned
+    src: { can_id: 0x648, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 340
+    name: wheel.speed_rl_kmh
+    unit: "km/h"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 340.0
+    status: planned
+    src: { can_id: 0x648, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 341
+    name: wheel.speed_rr_kmh
+    unit: "km/h"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 340.0
+    status: planned
+    src: { can_id: 0x648, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 342
+    name: engine.oil_temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -40.0
+    max: 215.0
+    status: planned
+    src: { can_id: 0x649, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 343
+    name: fuel.temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -40.0
+    max: 215.0
+    status: planned
+    src: { can_id: 0x649, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 344
+    name: ambient.temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -40.0
+    max: 215.0
+    status: planned
+    src: { can_id: 0x649, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 345
+    name: airbox.temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -40.0
+    max: 215.0
+    status: planned
+    src: { can_id: 0x649, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 346
+    name: fuel.used_l
+    unit: "l"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 655.35
+    status: planned
+    src: { can_id: 0x649, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 347
+    name: exhaust.temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1200.0
+    status: planned
+    src: { can_id: 0x64A, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 348
+    name: engine.load_average_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x64A, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 349
+    name: engine.speed_limit_rpm
+    unit: "rpm"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 16000.0
+    status: planned
+    src: { can_id: 0x64A, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 350
+    name: ambient.pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 60.0
+    max: 110.0
+    status: planned
+    src: { can_id: 0x64A, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 351
+    name: ignition.cyl_1_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 352
+    name: ignition.cyl_2_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 353
+    name: ignition.cyl_3_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 354
+    name: ignition.cyl_4_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 355
+    name: ignition.cyl_5_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 356
+    name: ignition.cyl_6_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 357
+    name: ignition.cyl_7_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 358
+    name: ignition.cyl_8_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x64B, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 359
+    name: engine.run_time_s
+    unit: "s"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_id: 0x64C, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 360
+    name: ecu.up_time_s
+    unit: "s"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_id: 0x64C, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 361
+    name: engine.run_time_total_hour
+    unit: "hour"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x64F, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 362
+    name: fuel.closed_loop_ctrl_bk_1_trim_ratio
+    unit: "ratio"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1.275
+    status: planned
+    src: { can_id: 0x64F, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 0.005, offset: 0.0 }
+
+  - id: 363
+    name: fuel.closed_loop_ctrl_bk_2_trim_ratio
+    unit: "ratio"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1.275
+    status: planned
+    src: { can_id: 0x64F, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 0.005, offset: 0.0 }
+
+  - id: 364
+    name: gearbox.temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -40.0
+    max: 215.0
+    status: planned
+    src: { can_id: 0x64F, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 365
+    name: fuel.tank_level_l
+    unit: "l"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 255.0
+    status: planned
+    src: { can_id: 0x64F, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 366
+    name: exhaust.lambda
+    unit: "lambda"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 2.55
+    status: planned
+    src: { can_id: 0x651, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 367
+    name: exhaust.lambda_bank_1_lambda
+    unit: "lambda"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 2.55
+    status: planned
+    src: { can_id: 0x651, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 368
+    name: exhaust.lambda_bank_2_lambda
+    unit: "lambda"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 2.55
+    status: planned
+    src: { can_id: 0x651, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 369
+    name: exhaust.temperature_bank_1_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1200.0
+    status: planned
+    src: { can_id: 0x651, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 370
+    name: exhaust.temperature_bank_2_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1200.0
+    status: planned
+    src: { can_id: 0x651, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 371
+    name: fuel.injector_sec_contribution_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x652, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 372
+    name: fuel.timing_secondary_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -720.0
+    max: 720.0
+    status: planned
+    src: { can_id: 0x652, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 373
+    name: fuel.injector_duty_cycle_secdry_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x652, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 374
+    name: fuel.pressure_direct_b1_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x653, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 375
+    name: fuel.pressure_direct_b1_aim_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x653, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 376
+    name: fuel.pressure_direct_b1_control_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x653, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 0.5, offset: 0.0 }
+
+  - id: 377
+    name: fuel.pressure_direct_b1_feed_fwd_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -128.0
+    max: 127.0
+    status: planned
+    src: { can_id: 0x653, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 378
+    name: fuel.pressure_direct_b1_prop_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -128.0
+    max: 127.0
+    status: planned
+    src: { can_id: 0x653, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 379
+    name: fuel.pressure_direct_b1_integral_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -128.0
+    max: 127.0
+    status: planned
+    src: { can_id: 0x653, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 380
+    name: fuel.pressure_direct_b2_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x654, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 381
+    name: fuel.pressure_direct_b2_aim_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x654, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 382
+    name: fuel.pressure_direct_b2_control_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 100.0
+    status: planned
+    src: { can_id: 0x654, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 0.5, offset: 0.0 }
+
+  - id: 383
+    name: fuel.pressure_direct_b2_feed_fwd_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -128.0
+    max: 127.0
+    status: planned
+    src: { can_id: 0x654, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 384
+    name: fuel.pressure_direct_b2_prop_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -128.0
+    max: 127.0
+    status: planned
+    src: { can_id: 0x654, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 385
+    name: fuel.pressure_direct_b2_integral_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -128.0
+    max: 127.0
+    status: planned
+    src: { can_id: 0x654, bus: 0, start_bit: 63, length: 8, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 386
+    name: brake.pressure_front_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -32768.0
+    max: 32767.0
+    status: planned
+    src: { can_id: 0x655, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 387
+    name: brake.pressure_rear_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -32768.0
+    max: 32767.0
+    status: planned
+    src: { can_id: 0x655, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 388
+    name: coolant.pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -3276.8
+    max: 3276.7
+    status: planned
+    src: { can_id: 0x655, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 389
+    name: steering.pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -32768.0
+    max: 32767.0
+    status: planned
+    src: { can_id: 0x655, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 1.0, offset: 0.0 }
+
+  - id: 390
+    name: steering.angle_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -3276.8
+    max: 3276.7
+    status: planned
+    src: { can_id: 0x656, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 391
+    name: inlet.mass_flow_gps
+    unit: "g/s"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x656, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 392
+    name: airbox.mass_flow_gps
+    unit: "g/s"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x656, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 393
+    name: fuel.flow_ml_s
+    unit: "ml/s"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 655.35
+    status: planned
+    src: { can_id: 0x656, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 394
+    name: fuel.injector_primary_pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x657, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 395
+    name: fuel.injector_secondary_pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x657, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 396
+    name: gear.input_shaft_speed_rpm
+    unit: "rpm"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_id: 0x657, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 397
+    name: gear.output_shaft_speed_rpm
+    unit: "rpm"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_id: 0x657, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 398
+    name: vehicle.accel_lateral_g
+    unit: "g"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -32.768
+    max: 32.767
+    status: planned
+    src: { can_id: 0x658, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.001, offset: 0.0 }
+
+  - id: 399
+    name: vehicle.accel_longitudinal_g
+    unit: "g"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -32.768
+    max: 32.767
+    status: planned
+    src: { can_id: 0x658, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.001, offset: 0.0 }
+
+  - id: 400
+    name: vehicle.accel_vertical_g
+    unit: "g"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -32.768
+    max: 32.767
+    status: planned
+    src: { can_id: 0x658, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.001, offset: 0.0 }
+
+  - id: 401
+    name: ignition.cylinder_9_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x659, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 402
+    name: ignition.cylinder_10_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x659, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 403
+    name: ignition.cylinder_11_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x659, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 404
+    name: ignition.cylinder_12_knock_level_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x659, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 405
+    name: vehicle.speed_kmh
+    unit: "km/h"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x659, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 406
+    name: ignition.cyl_9_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x65A, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 407
+    name: ignition.cyl_10_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x65A, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 408
+    name: ignition.cyl_11_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x65A, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 409
+    name: ignition.cyl_12_trim_knock_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 25.5
+    status: planned
+    src: { can_id: 0x65A, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 410
+    name: lap.time_s
+    unit: "s"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 655.35
+    status: planned
+    src: { can_id: 0x65B, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 411
+    name: lap.time_running_s
+    unit: "s"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 655.35
+    status: planned
+    src: { can_id: 0x65B, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 412
+    name: lap.number
+    unit: "count"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_id: 0x65B, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 413
+    name: lap.distance_m
+    unit: "m"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_id: 0x65B, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 414
+    name: differential.temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -30.0
+    max: 160.0
+    status: planned
+    src: { can_id: 0x65C, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 415
+    name: exhaust.pressure_bank_1_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x65E, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 416
+    name: exhaust.pressure_bank_2_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x65E, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 417
+    name: engine.crank_case_pressure_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 24000.0
+    status: planned
+    src: { can_id: 0x65E, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 418
+    name: knock.threshold_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 200.0
+    status: planned
+    src: { can_id: 0x65F, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 419
+    name: logging.system_1_used_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x65F, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 420
+    name: vehicle.speed_limit_kmh
+    unit: "km/h"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x65F, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 421
+    name: alt.fuel_timing_primary_blend_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 255.0
+    status: planned
+    src: { can_id: 0x670, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 422
+    name: alt.fuel_timing_secondary_blend_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 255.0
+    status: planned
+    src: { can_id: 0x670, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 423
+    name: alt.fuel_ignition_timing_blend_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 255.0
+    status: planned
+    src: { can_id: 0x670, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 424
+    name: alt.fuel_mixture_aim_blend_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 255.0
+    status: planned
+    src: { can_id: 0x670, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 425
+    name: fuel.composition_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 255.0
+    status: planned
+    src: { can_id: 0x670, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 426
+    name: alt.fuel_ignition_timing_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -64.0
+    max: 63.5
+    status: planned
+    src: { can_id: 0x670, bus: 0, start_bit: 55, length: 8, byte_order: big_endian, signed: true, scale: 0.5, offset: 0.0 }
+
+  - id: 427
+    name: alt.fuel_timing_primary_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -720.0
+    max: 720.0
+    status: planned
+    src: { can_id: 0x671, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 428
+    name: alt.fuel_timing_secondary_deg
+    unit: "deg"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -720.0
+    max: 720.0
+    status: planned
+    src: { can_id: 0x671, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 429
+    name: alt.fuel_mixture_aim_lambda
+    unit: "lambda"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 2.0
+    status: planned
+    src: { can_id: 0x671, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0 }
+
+  - id: 430
+    name: alt.fuel_pressure_sensor_kpa
+    unit: "kPa"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 1000.0
+    status: planned
+    src: { can_id: 0x672, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 431
+    name: alt.fuel_temperature_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -40.0
+    max: 215.0
+    status: planned
+    src: { can_id: 0x672, bus: 0, start_bit: 23, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 432
+    name: alt.fuel_contribution_efficiency_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 255.0
+    status: planned
+    src: { can_id: 0x672, bus: 0, start_bit: 31, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 433
+    name: auxillary.output_1_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -3276.8
+    max: 3276.7
+    status: planned
+    src: { can_id: 0x6A0, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 434
+    name: auxillary.output_2_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -3276.8
+    max: 3276.7
+    status: planned
+    src: { can_id: 0x6A0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 435
+    name: auxillary.output_3_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -3276.8
+    max: 3276.7
+    status: planned
+    src: { can_id: 0x6A0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 436
+    name: auxillary.output_4_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -3276.8
+    max: 3276.7
+    status: planned
+    src: { can_id: 0x6A0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.1, offset: 0.0 }
+
+  - id: 437
+    name: auxillary.output_5_duty_cycle_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_id: 0x6A1, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  - id: 1000
+    name: e888.av8_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 8191.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+
+  - id: 1001
+    name: e888.av7_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 8191.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+
+  - id: 1002
+    name: e888.av5_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 8191.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+
+  - id: 1003
+    name: e888.av3_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 8191.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+
+  - id: 1004
+    name: e888.av1_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 8191.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+
+  - id: 1005
+    name: e888.tc8_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+
+  - id: 1006
+    name: e888.tc7_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+
+  - id: 1007
+    name: e888.av6_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+
+  - id: 1008
+    name: e888.av4_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+
+  - id: 1009
+    name: e888.av2_mv
+    unit: "mV"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+
+  - id: 1010
+    name: e888.dig3_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+
+  - id: 1011
+    name: e888.dig1_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+
+  - id: 1012
+    name: e888.tc5_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+
+  - id: 1013
+    name: e888.tc3_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+
+  - id: 1014
+    name: e888.tc1_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+
+  - id: 1015
+    name: e888.dig4_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+
+  - id: 1016
+    name: e888.dig2_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 6553.5
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+
+  - id: 1017
+    name: e888.tc6_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+
+  - id: 1018
+    name: e888.tc4_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+
+  - id: 1019
+    name: e888.tc2_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -8192.0
+    max: 8191.75
+    status: planned
+    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+
+  - id: 1020
+    name: e888.supply_minus_5v_v
+    unit: "V"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -20.48
+    max: 20.47
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: true, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+
+  - id: 1021
+    name: e888.cjc1_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -200.0
+    max: 3895.0
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
+
+  - id: 1022
+    name: e888.supply_4v5_v
+    unit: "V"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 40.95
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 2 } }
+
+  - id: 1023
+    name: e888.cjc2_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -200.0
+    max: 65335.0
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
+
+  - id: 1024
+    name: e888.aux_8v_v
+    unit: "V"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 655.35
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+
+  - id: 1025
+    name: e888.cjc3_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: -200.0
+    max: 65335.0
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
+
+  - id: 1026
+    name: e888.aux_5v_v
+    unit: "V"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 655.35
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+
+  - id: 1027
+    name: e888.vbat_v
+    unit: "V"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 655.35
+    status: planned
+    src: { can_offset: 1, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+
+  - id: 1028
+    name: e888.pwm_7_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+
+  - id: 1029
+    name: e888.pwm_5_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+
+  - id: 1030
+    name: e888.pwm_3_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+
+  - id: 1031
+    name: e888.pwm_1_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
+
+  - id: 1032
+    name: e888.pwm_7_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+
+  - id: 1033
+    name: e888.pwm_5_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+
+  - id: 1034
+    name: e888.pwm_3_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+
+  - id: 1035
+    name: e888.pwm_1_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
+
+  - id: 1036
+    name: e888.pwm_8_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+
+  - id: 1037
+    name: e888.pwm_6_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+
+  - id: 1038
+    name: e888.pwm_4_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+
+  - id: 1039
+    name: e888.pwm_2_duty_pct
+    unit: "%"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 99.99999999
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
+
+  - id: 1040
+    name: e888.pwm_8_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+
+  - id: 1041
+    name: e888.pwm_6_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+
+  - id: 1042
+    name: e888.pwm_4_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+
+  - id: 1043
+    name: e888.pwm_2_frequency_hz
+    unit: "Hz"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: false
+    log: true
+    min: 0.0
+    max: 65535.0
+    status: planned
+    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }

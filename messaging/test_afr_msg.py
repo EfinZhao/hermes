@@ -11,7 +11,7 @@ DBC = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("M1_DBC", "")
 
 def test_registry_loads():
     reg = m.load_registry(os.path.join(HERE, "registry.yaml"))
-    assert reg["registry_version"] == 1
+    assert reg["registry_version"] >= 1
     assert {c["id"] for c in reg["channels"]} >= {1, 2, 100, 101, 102}
 
 
@@ -211,6 +211,14 @@ def test_registry_can_channels_match_dbcs():
     print(f"  {n} registry CAN channels agree with the DBCs")
 
 
+def test_importer_is_idempotent():
+    """Re-running tools/import_can_csv.py on the committed registry must add nothing."""
+    import subprocess
+    script = os.path.join(HERE, "..", "tools", "import_can_csv.py")
+    out = subprocess.run([sys.executable, script, "--dry-run"], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "0 channels to add", out.stdout
+
+
 def test_mux_wrong_selector_returns_none():
     ch = {"src": {"start_bit": 15, "length": 8, "byte_order": "big_endian", "signed": False,
                   "scale": 1.0, "offset": 0.0, "mux": {"start_bit": 7, "length": 2, "value": 1}}}
@@ -246,7 +254,7 @@ if __name__ == "__main__":
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
     for name, fn in tests:
-        if "cantools" in name or "every_signal" in name or "match_dbcs" in name:
+        if "cantools" in name or "every_signal" in name or "match_dbcs" in name or "importer" in name:
             if not DBC:
                 print(f"SKIP {name} (no DBC path given)")
                 continue
