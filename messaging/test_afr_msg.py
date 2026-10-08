@@ -122,7 +122,7 @@ def test_can_extraction_against_cantools():
     rng = random.Random(1)
     checked = 0
     for ch in reg["channels"]:
-        if ch["source"] != "can":
+        if ch["source"] != "can" or "can_id" not in ch["src"] or "mux" in ch["src"]:
             continue
         s = ch["src"]
         msg = db.get_message_by_frame_id(s["can_id"])
@@ -138,7 +138,7 @@ def test_can_extraction_against_cantools():
                                    s["signed"], s["scale"], s["offset"])
             assert abs(want - got) < 1e-6, (ch["name"], data.hex(), want, got)
         checked += 1
-    assert checked == 3
+    assert checked >= 3, checked
 
 
 def test_extraction_every_signal_in_dbc():
@@ -165,11 +165,88 @@ def test_extraction_every_signal_in_dbc():
     print(f"  extractor agrees with cantools on {n} DBC signals")
 
 
+def _load_dbcs():
+    import cantools
+    m130 = cantools.database.load_file(DBC)
+    e888 = cantools.database.load_file(os.path.join(os.path.dirname(DBC), "E8xx.dbc"))
+    return m130, e888
+
+
+def test_registry_can_channels_match_dbcs():
+    """EVERY CAN channel in the registry (active and planned, M130 and E888 incl. multiplexed)
+    must match its DBC definition and extract the same values as cantools."""
+    m130, e888 = _load_dbcs()
+    reg = m.load_registry(os.path.join(HERE, "registry.yaml"))
+    rng = random.Random(3)
+    n = 0
+    for ch in reg["channels"]:
+        if ch["source"] != "can":
+            continue
+        s = ch["src"]
+        db = e888 if "can_offset" in s else m130
+        msg = db.get_message_by_frame_id(m.can_frame_id(ch, reg))
+        mux = s.get("mux")
+        sigs = [x for x in msg.signals if x.start == s["start_bit"] and x.length == s["length"]
+                and (mux is None or x.multiplexer_ids == [mux["value"]])]
+        assert len(sigs) == 1, (ch["name"], [x.name for x in sigs])
+        sig = sigs[0]
+        assert sig.byte_order == s["byte_order"] and sig.is_signed == s["signed"], ch["name"]
+        assert abs(sig.scale - s["scale"]) < 1e-9 and abs(sig.offset - s["offset"]) < 1e-9, ch["name"]
+        for _ in range(20):
+            data = bytearray(rng.randrange(256) for _ in range(msg.length))
+            if mux is not None:
+                sel = next(x for x in msg.signals if x.is_multiplexer)
+                assert (sel.start, sel.length) == (mux["start_bit"], mux["length"]), ch["name"]
+                # force the selector to the channel's mux value (selectors are big-endian)
+                for i in range(mux["length"]):
+                    p = mux["start_bit"] - i if i <= mux["start_bit"] % 8 else None
+                    assert p is not None
+                    bit = (mux["value"] >> (mux["length"] - 1 - i)) & 1
+                    data[p // 8] = (data[p // 8] & ~(1 << (p % 8))) | (bit << (p % 8))
+            want = msg.decode(bytes(data), decode_choices=False, scaling=True)[sig.name]
+            got = m.extract_channel(bytes(data), ch)
+            assert got is not None and abs(want - got) < 1e-6, (ch["name"], bytes(data).hex(), want, got)
+        n += 1
+    assert n >= 3, n
+    print(f"  {n} registry CAN channels agree with the DBCs")
+
+
+def test_mux_wrong_selector_returns_none():
+    ch = {"src": {"start_bit": 15, "length": 8, "byte_order": "big_endian", "signed": False,
+                  "scale": 1.0, "offset": 0.0, "mux": {"start_bit": 7, "length": 2, "value": 1}}}
+    assert m.extract_channel(bytes([0b01000000, 42, 0, 0, 0, 0, 0, 0]), ch) == 42.0
+    assert m.extract_channel(bytes([0b10000000, 42, 0, 0, 0, 0, 0, 0]), ch) is None
+
+
+def test_registry_rejects_bad_can_src():
+    import tempfile
+    import yaml
+    reg = m.load_registry(os.path.join(HERE, "registry.yaml"))
+    good = next(c for c in reg["channels"] if c["source"] == "can")
+    bad_srcs = [
+        {k: v for k, v in good["src"].items() if k != "scale"},                    # missing key
+        {**good["src"], "can_offset": 1},                                           # both id forms
+        {**good["src"], "byte_order": "middle_endian"},                             # bad order
+        {**good["src"], "mux": {"start_bit": 7, "length": 2, "value": 4}},          # value too big
+    ]
+    for src in bad_srcs:
+        broken = {**reg, "channels": [{**good, "src": src}]}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(broken, f)
+        try:
+            m.load_registry(f.name)
+        except ValueError:
+            continue
+        finally:
+            os.unlink(f.name)
+        raise AssertionError(f"bad src accepted: {src}")
+
+
 if __name__ == "__main__":
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
     for name, fn in tests:
-        if "cantools" in name or "every_signal" in name:
+        if "cantools" in name or "every_signal" in name or "match_dbcs" in name:
             if not DBC:
                 print(f"SKIP {name} (no DBC path given)")
                 continue

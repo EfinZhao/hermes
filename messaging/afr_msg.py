@@ -200,6 +200,30 @@ def extract_signal(data: bytes, start_bit: int, length: int, byte_order: str,
 # ---------------------------------------------------------------- registry
 STATUSES = {"active", "planned", "deprecated"}
 SOURCES = {"can", "adc", "i2c", "synthetic"}
+BYTE_ORDERS = {"big_endian", "little_endian"}
+CAN_SIGNAL_KEYS = {"bus", "start_bit", "length", "byte_order", "signed", "scale", "offset"}
+
+
+def _check_can_src(ch: dict, reg: dict) -> None:
+    """A CAN channel is addressed by an absolute `can_id`, or by `can_offset` from the
+    E888 base id (`e888_base_id` in the registry). Multiplexed signals add a `mux` block."""
+    s = ch["src"]
+    cid = ch["id"]
+    missing = CAN_SIGNAL_KEYS - s.keys()
+    if missing:
+        raise ValueError(f"channel {cid}: src missing {sorted(missing)}")
+    if ("can_id" in s) == ("can_offset" in s):
+        raise ValueError(f"channel {cid}: src needs exactly one of can_id / can_offset")
+    if "can_offset" in s and "e888_base_id" not in reg:
+        raise ValueError(f"channel {cid}: can_offset needs e888_base_id in the registry")
+    if s["byte_order"] not in BYTE_ORDERS:
+        raise ValueError(f"channel {cid}: bad byte_order {s['byte_order']}")
+    if not 1 <= s["length"] <= 32 or not 0 <= s["start_bit"] <= 63:
+        raise ValueError(f"channel {cid}: bad start_bit/length")
+    mux = s.get("mux")
+    if mux is not None and (mux.keys() != {"start_bit", "length", "value"}
+                            or mux["value"] >= 1 << mux["length"]):
+        raise ValueError(f"channel {cid}: bad mux block")
 
 
 def load_registry(path: str) -> dict:
@@ -215,12 +239,33 @@ def load_registry(path: str) -> dict:
             raise ValueError(f"bad status/source on channel {ch['id']}")
         if ch["priority"] == 2 and "live_decimate" not in ch:
             raise ValueError(f"priority 2 channel {ch['id']} needs live_decimate")
+        if ch["source"] == "can":
+            _check_can_src(ch, reg)
         seen_ids.add(ch["id"])
         seen_names.add(ch["name"])
     pids = [p["id"] for p in reg["params"]]
     if len(pids) != len(set(pids)):
         raise ValueError("duplicate param id")
     return reg
+
+
+def can_frame_id(ch: dict, reg: dict) -> int:
+    """Absolute CAN id a channel is read from."""
+    s = ch["src"]
+    return s["can_id"] if "can_id" in s else reg["e888_base_id"] + s["can_offset"]
+
+
+def extract_channel(data: bytes, ch: dict) -> float | None:
+    """Decode one CAN channel from a frame. Returns None when the channel is multiplexed
+    and this frame carries a different multiplexer value."""
+    s = ch["src"]
+    mux = s.get("mux")
+    if mux is not None:
+        sel = extract_signal(data, mux["start_bit"], mux["length"], "big_endian", False, 1, 0)
+        if sel != mux["value"]:
+            return None
+    return extract_signal(data, s["start_bit"], s["length"], s["byte_order"],
+                          s["signed"], s["scale"], s["offset"])
 
 
 def apply_quality(value: float, ch: dict) -> tuple[float, int]:
