@@ -6,4 +6,9 @@ requires-python = ">=3.11"
 dependencies = ["pyyaml"]
 
 [dependency-groups]
-dev = ["cantools"]
+dev = ["cantools", "pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["messaging", "tests"]
+addopts = "-ra --strict-markers"
