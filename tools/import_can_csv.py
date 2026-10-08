@@ -190,7 +190,9 @@ def main() -> int:
         text = re.sub(r"^(device_id: .*)$", r"\1\ne888_base_id: 0xF0   # E888 CAN base id; one of 0xF0/F4/F8/FC, match your unit's configuration",
                       text, count=1, flags=re.M)
     text = text.rstrip("\n") + "\n\n  # --- imported from the M130 / E888 DBCs by tools/import_can_csv.py ---\n" + "\n".join(out)
-    REGISTRY.write_text(text)
+    tmp = REGISTRY.with_suffix(".yaml.tmp")      # write then rename: a crash can't leave a half-written registry
+    tmp.write_text(text)
+    tmp.replace(REGISTRY)
     return 0
 
 

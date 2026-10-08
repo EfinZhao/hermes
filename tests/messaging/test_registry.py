@@ -42,6 +42,13 @@ def test_registry_rejects_bad_can_src(registry, tmp_path, case):
         m.load_registry(str(path))
 
 
+def test_empty_registry_gives_clear_error(tmp_path):
+    path = tmp_path / "empty.yaml"
+    path.write_text("")
+    with pytest.raises(ValueError, match="not a registry"):
+        m.load_registry(str(path))
+
+
 def test_mux_wrong_selector_returns_none():
     ch = {"src": {"start_bit": 15, "length": 8, "byte_order": "big_endian", "signed": False,
                   "scale": 1.0, "offset": 0.0, "mux": {"start_bit": 7, "length": 2, "value": 1}}}

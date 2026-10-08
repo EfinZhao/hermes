@@ -230,6 +230,8 @@ def _check_can_src(ch: dict, reg: dict) -> None:
 def load_registry(path: str) -> dict:
     with open(path) as f:
         reg = yaml.safe_load(f)
+    if not isinstance(reg, dict) or "channels" not in reg or "params" not in reg:
+        raise ValueError(f"{path}: not a registry (file empty, or missing params/channels)")
     seen_ids, seen_names = set(), set()
     for ch in reg["channels"]:
         if not 1 <= ch["id"] <= 32767:
