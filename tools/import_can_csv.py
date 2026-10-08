@@ -4,7 +4,7 @@ Usage:  uv run python tools/import_can_csv.py [--dry-run] [--registry PATH] [--b
 
 What it does
   * registry.yaml missing or empty: starts from messaging/registry_base.yaml (params, device id,
-    your non-CAN channels), then imports the CAN channels.
+    your non-CAN channels), then imports the CAN channels of every device in the config.
   * registry.yaml exists: appends only the signals it does not have yet.
   Which signals, their ids and friendly names come from tools/import_can_config.yaml.
 
@@ -51,13 +51,13 @@ def snake(name: str) -> str:
     return re.sub(r"_+", "_", re.sub(r"[^0-9a-z]+", "_", name.lower())).strip("_")
 
 
-def auto_name(sig_name: str, unit: str, e888: bool) -> str:
+def auto_name(sig_name: str, unit: str, prefix: str | None) -> str:
     base = snake(sig_name)
     suffix = UNIT_NAME.get(unit, snake(unit)) if unit else ""
     if suffix and not base.endswith("_" + suffix) and base != suffix:
         base += "_" + suffix
-    if e888:
-        return "e888." + base
+    if prefix:
+        return f"{prefix}.{base}"
     group, _, rest = base.partition("_")
     return f"{group}.{rest}" if rest else base
 
@@ -71,27 +71,29 @@ def value_range(sig) -> tuple[float, float]:
     return float(f"{lo:.10g}"), float(f"{hi:.10g}")
 
 
-def candidates(cfg: dict, m130, e888):
-    """Yield (key, sig, addr, is_e888, mux) in a stable order. `mux` = (sel_start, sel_len, value)."""
-    skip, keep = set(cfg["skip_messages"]), set(cfg["keep_unitless"])
-    for msg in sorted(m130.messages, key=lambda m: m.frame_id):
-        if msg.frame_id in skip:
-            continue
-        for sig in msg.signals:
-            if sig.unit or sig.name in keep:
-                yield ("id", msg.frame_id, sig.start, sig.length, None), sig, \
-                    {"can_id": f"0x{msg.frame_id:X}"}, False, None
-    for off in cfg["e888_offsets"]:
-        msg = e888.get_message_by_frame_id(cfg["e888_base_id"] + off)
+def candidates(dev: dict, db):
+    """Yield (key, sig, addr, mux) for one device in a stable order. `mux` = (sel_start, sel_len, value)."""
+    skip, keep = set(dev.get("skip_messages", [])), set(dev.get("keep_unitless", []))
+    if "base_id" not in dev:                                   # fixed ids, as written in the DBC
+        for msg in sorted(db.messages, key=lambda m: m.frame_id):
+            if msg.frame_id in skip:
+                continue
+            for sig in msg.signals:
+                if sig.unit or sig.name in keep:
+                    yield ("id", msg.frame_id, sig.start, sig.length, None), sig, {"can_id": f"0x{msg.frame_id:X}"}, None
+        return
+    for off in dev["offsets"]:                                 # base + offset
+        msg = db.get_message_by_frame_id(dev["base_id"] + off)
         sel = next((s for s in msg.signals if s.is_multiplexer), None)
         for sig in msg.signals:
-            if sig.is_multiplexer or not sig.unit:
+            if sig.is_multiplexer or not (sig.unit or sig.name in keep):
                 continue
             mux = None
             if sig.multiplexer_ids:
                 assert sel is not None and sel.byte_order == "big_endian" and not sel.is_signed
                 mux = (sel.start, sel.length, sig.multiplexer_ids[0])
-            yield ("off", off, sig.start, sig.length, mux), sig, {"can_offset": off}, True, mux
+            yield ("base", dev["name"], off, sig.start, sig.length, mux), sig, \
+                {"can_base": dev["name"], "can_offset": off}, mux
 
 
 def existing_keys(reg: dict) -> set:
@@ -104,7 +106,7 @@ def existing_keys(reg: dict) -> set:
         if "can_id" in s:
             keys.add(("id", s["can_id"], s["start_bit"], s["length"], mux))
         else:
-            keys.add(("off", s["can_offset"], s["start_bit"], s["length"], mux))
+            keys.add(("base", s["can_base"], s["can_offset"], s["start_bit"], s["length"], mux))
     return keys
 
 
@@ -129,6 +131,33 @@ def render(chid, name, sig, addr, mux, active, priority=1) -> str:
             f"    status: {'active' if active else 'planned'}\n    src: {src}\n")
 
 
+def check_devices(devices: list) -> None:
+    names = [d["name"] for d in devices]
+    if len(names) != len(set(names)):
+        raise SystemExit("config: device names must be unique")
+    firsts = [d["first_id"] for d in devices]
+    if len(firsts) != len(set(firsts)):
+        raise SystemExit("config: devices need different first_id values")
+    for d in devices:
+        if "base_id" in d and "offsets" not in d:
+            raise SystemExit(f"config: device {d['name']} has base_id but no offsets")
+
+
+def add_can_bases(text: str, reg: dict, devices: list) -> str:
+    """Make sure registry.yaml's `can_bases` table has an entry for every base+offset device.
+    Existing entries win: the registry is where you record your unit's real base id."""
+    have = reg.get("can_bases") or {}
+    new = [(d["name"], d["base_id"]) for d in devices if "base_id" in d and d["name"] not in have]
+    if not new:
+        return text
+    lines = "".join(f"  {n}: 0x{b:X}\n" for n, b in new)
+    if "can_bases" in reg:
+        return re.sub(r"^(can_bases:.*\n)", lambda m: m.group(1) + lines, text, count=1, flags=re.M)
+    return re.sub(r"^(device_id: .*\n)",
+                  lambda m: m.group(1) + "can_bases:            # CAN base ids of devices addressed by offset (src.can_base). "
+                  "Match your unit's configuration.\n" + lines, text, count=1, flags=re.M)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dry-run", action="store_true")
@@ -137,9 +166,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     args = ap.parse_args(argv)
 
+    dbs: dict = {}
     cfg = yaml.safe_load(args.config.read_text())
-    m130 = cantools.database.load_file(str(ROOT / cfg["dbc"]["m130"]))
-    e888 = cantools.database.load_file(str(ROOT / cfg["dbc"]["e888"]))
+    devices = cfg["devices"]
+    check_devices(devices)
 
     # start from the existing registry, or from the base template when there is none
     text = args.registry.read_text() if args.registry.exists() else ""
@@ -149,40 +179,44 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{args.registry} missing or empty: starting from {args.base.name}")
     reg = msgcodec.validate_registry(yaml.safe_load(text), str(args.registry))
 
-    pinned, active = cfg["pinned"], set(cfg["active"])
-    first_m130, first_e888 = cfg["first_id"]["m130"], cfg["first_id"]["e888"]
-    for sig_name, p in pinned.items():
-        if p["id"] >= min(first_m130, first_e888):
-            raise SystemExit(f"pinned id {p['id']} ({sig_name}) must be below first_id {min(first_m130, first_e888)}")
-
+    firsts = sorted(d["first_id"] for d in devices)
     have = existing_keys(reg)
     names = {c["name"] for c in reg["channels"]}
     ids = {c["id"] for c in reg["channels"]}
-    next_id = {False: max([i for i in ids if first_m130 <= i < first_e888], default=first_m130 - 1) + 1,
-               True: max([i for i in ids if i >= first_e888], default=first_e888 - 1) + 1}
-
-    out, seen_pinned = [], set()
-    for key, sig, addr, is_e888, mux in candidates(cfg, m130, e888):
-        pin = None if is_e888 else pinned.get(sig.name)
-        if pin:
-            seen_pinned.add(sig.name)
-        if key in have:          # already in the registry (possibly under a pinned id)
-            continue
-        if pin:
-            chid, name, is_active, priority = pin["id"], pin["name"], pin.get("active", False), pin.get("priority", 1)
-            if chid in ids:
-                raise SystemExit(f"pinned id {chid} ({sig.name}) is already used by another channel")
-        else:
-            chid, next_id[is_e888] = next_id[is_e888], next_id[is_e888] + 1
-            name = cfg["names"].get(sig.name) or auto_name(sig.name, sig.unit, is_e888)
-            is_active, priority = sig.name in active, 1
-        if name in names:
-            raise SystemExit(f"name collision: {name} ({sig.name})")
-        names.add(name)
-        ids.add(chid)
-        out.append(render(chid, name, sig, addr, mux, is_active, priority))
-    if (missing := set(pinned) - seen_pinned):
-        raise SystemExit(f"pinned signals not found in the M130 DBC: {sorted(missing)}")
+    out = []
+    for dev in devices:
+        db = dbs.setdefault(dev["dbc"], cantools.database.load_file(str(ROOT / dev["dbc"])))
+        pinned, active, friendly = dev.get("pinned", {}), set(dev.get("active", [])), dev.get("names", {})
+        lo = dev["first_id"]
+        hi = next((f for f in firsts if f > lo), 1 << 30)       # this device's id block is [lo, hi)
+        for sig_name, p in pinned.items():
+            if p["id"] >= min(firsts):
+                raise SystemExit(f"{dev['name']}: pinned id {p['id']} ({sig_name}) must be below the lowest first_id {min(firsts)}")
+        next_id = max([i for i in ids if lo <= i < hi], default=lo - 1) + 1
+        seen_pinned = set()
+        for key, sig, addr, mux in candidates(dev, db):
+            pin = pinned.get(sig.name)
+            if pin:
+                seen_pinned.add(sig.name)
+            if key in have:          # already in the registry (possibly under a pinned id)
+                continue
+            if pin:
+                chid, name, is_active, priority = pin["id"], pin["name"], pin.get("active", False), pin.get("priority", 1)
+                if chid in ids:
+                    raise SystemExit(f"pinned id {chid} ({sig.name}) is already used by another channel")
+            else:
+                chid, next_id = next_id, next_id + 1
+                if chid >= hi:
+                    raise SystemExit(f"{dev['name']}: id block [{lo}, {hi}) is full, raise the next device's first_id")
+                name = friendly.get(sig.name) or auto_name(sig.name, sig.unit, dev.get("prefix"))
+                is_active, priority = sig.name in active, 1
+            if name in names:
+                raise SystemExit(f"name collision: {name} ({dev['name']}.{sig.name}); set a distinct prefix or names entry")
+            names.add(name)
+            ids.add(chid)
+            out.append(render(chid, name, sig, addr, mux, is_active, priority))
+        if (missing := set(pinned) - seen_pinned):
+            raise SystemExit(f"{dev['name']}: pinned signals not found in {dev['dbc']}: {sorted(missing)}")
 
     print(f"{len(out)} channels to add")
     if args.dry_run or not out:
@@ -190,10 +224,7 @@ def main(argv: list[str] | None = None) -> int:
 
     text = re.sub(r"^registry_version: \d+", f"registry_version: {reg['registry_version'] + 1}", text,
                   count=1, flags=re.M)
-    if "e888_base_id" not in text:
-        text = re.sub(r"^(device_id: .*)$",
-                      rf"\1\ne888_base_id: 0x{cfg['e888_base_id']:X}   # E888 CAN base id; one of 0xF0/F4/F8/FC, match your unit's configuration",
-                      text, count=1, flags=re.M)
+    text = add_can_bases(text, reg, devices)
     text = text.rstrip("\n") + "\n\n  # --- imported from the DBCs by tools/import_can_csv.py ---\n" + "\n".join(out)
     msgcodec.validate_registry(yaml.safe_load(text), "result")      # never write an invalid registry
     tmp = args.registry.with_suffix(".yaml.tmp")                    # write then rename: no half-written file

@@ -1,3 +1,7 @@
+# Starting point for registry.yaml. tools/import_can_csv.py copies this when registry.yaml is
+# missing or empty, then appends the CAN channels from the DBCs (see tools/import_can_config.yaml).
+# Put your own non-CAN channels and params here. Rules below apply to registry.yaml itself.
+#
 # Channel registry  (the "services.py" of our messaging system)
 #
 # RULES (cereal-style, so old logs stay readable):
@@ -13,7 +17,8 @@
 
 registry_version: 2
 device_id: 20          # 1 byte in every packet header. Set a UNIQUE id per device/car (20 is just the example).
-e888_base_id: 0xF0   # E888 CAN base id; one of 0xF0/F4/F8/FC, match your unit's configuration
+can_bases:            # CAN base ids of devices addressed by offset (src.can_base). Match your unit's configuration.
+  e888: 0xF0         # E888 expansion unit; one of 0xF0/F4/F8/FC
 
 # ---------------------------------------------------------------------------
 # PARAMS: tunable settings. These can be changed with a CONFIG message
@@ -88,46 +93,6 @@ channels:
     status: active
     src: { kind: sine, freq_hz: 0.5 }
 
-  # --- real CAN channels from the M130 DBC (bit numbering exactly as in the DBC) ---
-  - id: 100
-    name: engine.speed_rpm
-    unit: rpm
-    source: can
-    rate_hz: 10
-    priority: 0
-    live: true
-    log: true
-    min: 0
-    max: 16000
-    status: active
-    src: { can_id: 0x640, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
-
-  - id: 101
-    name: coolant.temp_c
-    unit: C
-    source: can
-    rate_hz: 10
-    priority: 0
-    live: true
-    log: true
-    min: -40
-    max: 215
-    status: active
-    src: { can_id: 0x649, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
-
-  - id: 102
-    name: ecu.battery_v
-    unit: V
-    source: can
-    rate_hz: 10
-    priority: 1
-    live: true
-    log: true
-    min: 0
-    max: 25.5
-    status: active
-    src: { can_id: 0x649, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
-
   # --- planned sensor channel: shows the shape of a non-CAN source ---
   - id: 200
     name: suspension.front_left_mm
@@ -143,7 +108,20 @@ channels:
     status: planned
     src: { adc_channel: 0, scale: 0.0305, offset: 0.0 }   # placeholder calibration
 
-  # --- imported from the M130 / E888 DBCs by tools/import_can_csv.py ---
+  # --- imported from the DBCs by tools/import_can_csv.py ---
+  - id: 100
+    name: engine.speed_rpm
+    unit: "rpm"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 0
+    live: true
+    log: true
+    min: 0.0
+    max: 16000.0
+    status: active
+    src: { can_id: 0x640, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
   - id: 300
     name: intake.manifold_kpa
     unit: "kPa"
@@ -690,6 +668,19 @@ channels:
     status: planned
     src: { can_id: 0x648, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
 
+  - id: 101
+    name: coolant.temp_c
+    unit: "C"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 0
+    live: true
+    log: true
+    min: -40.0
+    max: 215.0
+    status: active
+    src: { can_id: 0x649, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
   - id: 342
     name: engine.oil_temperature_c
     unit: "C"
@@ -741,6 +732,19 @@ channels:
     max: 215.0
     status: planned
     src: { can_id: 0x649, bus: 0, start_bit: 39, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 102
+    name: ecu.battery_v
+    unit: "V"
+    source: can
+    rate_hz: 10              # placeholder: DBC has no cycle time
+    priority: 1
+    live: true
+    log: true
+    min: 0.0
+    max: 25.5
+    status: active
+    src: { can_id: 0x649, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
 
   - id: 346
     name: fuel.used_l
@@ -1949,7 +1953,7 @@ channels:
     min: 0.0
     max: 8191.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
 
   - id: 1001
     name: e888.av7_mv
@@ -1962,7 +1966,7 @@ channels:
     min: 0.0
     max: 8191.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
 
   - id: 1002
     name: e888.av5_mv
@@ -1975,7 +1979,7 @@ channels:
     min: 0.0
     max: 8191.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
 
   - id: 1003
     name: e888.av3_mv
@@ -1988,7 +1992,7 @@ channels:
     min: 0.0
     max: 8191.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
 
   - id: 1004
     name: e888.av1_mv
@@ -2001,7 +2005,7 @@ channels:
     min: 0.0
     max: 8191.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 4, length: 13, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
 
   - id: 1005
     name: e888.tc8_c
@@ -2014,7 +2018,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
 
   - id: 1006
     name: e888.tc7_c
@@ -2027,7 +2031,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
 
   - id: 1007
     name: e888.av6_mv
@@ -2040,7 +2044,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
 
   - id: 1008
     name: e888.av4_mv
@@ -2053,7 +2057,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
 
   - id: 1009
     name: e888.av2_mv
@@ -2066,7 +2070,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
 
   - id: 1010
     name: e888.dig3_hz
@@ -2079,7 +2083,7 @@ channels:
     min: 0.0
     max: 6553.5
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
 
   - id: 1011
     name: e888.dig1_hz
@@ -2092,7 +2096,7 @@ channels:
     min: 0.0
     max: 6553.5
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
 
   - id: 1012
     name: e888.tc5_c
@@ -2105,7 +2109,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
 
   - id: 1013
     name: e888.tc3_c
@@ -2118,7 +2122,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
 
   - id: 1014
     name: e888.tc1_c
@@ -2131,7 +2135,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
 
   - id: 1015
     name: e888.dig4_hz
@@ -2144,7 +2148,7 @@ channels:
     min: 0.0
     max: 6553.5
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 4 } }
 
   - id: 1016
     name: e888.dig2_hz
@@ -2157,7 +2161,7 @@ channels:
     min: 0.0
     max: 6553.5
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0, mux: { start_bit: 7, length: 3, value: 3 } }
 
   - id: 1017
     name: e888.tc6_c
@@ -2170,7 +2174,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 2 } }
 
   - id: 1018
     name: e888.tc4_c
@@ -2183,7 +2187,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 1 } }
 
   - id: 1019
     name: e888.tc2_c
@@ -2196,7 +2200,7 @@ channels:
     min: -8192.0
     max: 8191.75
     status: planned
-    src: { can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
+    src: { can_base: e888, can_offset: 0, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: true, scale: 0.25, offset: 0.0, mux: { start_bit: 7, length: 3, value: 0 } }
 
   - id: 1020
     name: e888.supply_minus_5v_v
@@ -2209,7 +2213,7 @@ channels:
     min: -20.48
     max: 20.47
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: true, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: true, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
 
   - id: 1021
     name: e888.cjc1_c
@@ -2222,7 +2226,7 @@ channels:
     min: -200.0
     max: 3895.0
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
 
   - id: 1022
     name: e888.supply_4v5_v
@@ -2235,7 +2239,7 @@ channels:
     min: 0.0
     max: 40.95
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 2 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 3, length: 12, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 2 } }
 
   - id: 1023
     name: e888.cjc2_c
@@ -2248,7 +2252,7 @@ channels:
     min: -200.0
     max: 65335.0
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
 
   - id: 1024
     name: e888.aux_8v_v
@@ -2261,7 +2265,7 @@ channels:
     min: 0.0
     max: 655.35
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
 
   - id: 1025
     name: e888.cjc3_c
@@ -2274,7 +2278,7 @@ channels:
     min: -200.0
     max: 65335.0
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: -200.0, mux: { start_bit: 7, length: 4, value: 0 } }
 
   - id: 1026
     name: e888.aux_5v_v
@@ -2287,7 +2291,7 @@ channels:
     min: 0.0
     max: 655.35
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 39, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
 
   - id: 1027
     name: e888.vbat_v
@@ -2300,7 +2304,7 @@ channels:
     min: 0.0
     max: 655.35
     status: planned
-    src: { can_offset: 1, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
+    src: { can_base: e888, can_offset: 1, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 0.01, offset: 0.0, mux: { start_bit: 7, length: 4, value: 1 } }
 
   - id: 1028
     name: e888.pwm_7_duty_pct
@@ -2313,7 +2317,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
 
   - id: 1029
     name: e888.pwm_5_duty_pct
@@ -2326,7 +2330,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
 
   - id: 1030
     name: e888.pwm_3_duty_pct
@@ -2339,7 +2343,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
 
   - id: 1031
     name: e888.pwm_1_duty_pct
@@ -2352,7 +2356,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 15, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
 
   - id: 1032
     name: e888.pwm_7_frequency_hz
@@ -2365,7 +2369,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
 
   - id: 1033
     name: e888.pwm_5_frequency_hz
@@ -2378,7 +2382,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
 
   - id: 1034
     name: e888.pwm_3_frequency_hz
@@ -2391,7 +2395,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
 
   - id: 1035
     name: e888.pwm_1_frequency_hz
@@ -2404,7 +2408,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 23, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
 
   - id: 1036
     name: e888.pwm_8_duty_pct
@@ -2417,7 +2421,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
 
   - id: 1037
     name: e888.pwm_6_duty_pct
@@ -2430,7 +2434,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
 
   - id: 1038
     name: e888.pwm_4_duty_pct
@@ -2443,7 +2447,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
 
   - id: 1039
     name: e888.pwm_2_duty_pct
@@ -2456,7 +2460,7 @@ channels:
     min: 0.0
     max: 99.99999999
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.3921568627, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
 
   - id: 1040
     name: e888.pwm_8_frequency_hz
@@ -2469,7 +2473,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 3 } }
 
   - id: 1041
     name: e888.pwm_6_frequency_hz
@@ -2482,7 +2486,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 2 } }
 
   - id: 1042
     name: e888.pwm_4_frequency_hz
@@ -2495,7 +2499,7 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 1 } }
 
   - id: 1043
     name: e888.pwm_2_frequency_hz
@@ -2508,4 +2512,4 @@ channels:
     min: 0.0
     max: 65535.0
     status: planned
-    src: { can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }
+    src: { can_base: e888, can_offset: 3, bus: 0, start_bit: 55, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0, mux: { start_bit: 7, length: 8, value: 0 } }

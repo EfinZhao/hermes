@@ -206,8 +206,9 @@ CAN_SIGNAL_KEYS = {"bus", "start_bit", "length", "byte_order", "signed", "scale"
 
 
 def _check_can_src(ch: dict, reg: dict) -> None:
-    """A CAN channel is addressed by an absolute `can_id`, or by `can_offset` from the
-    E888 base id (`e888_base_id` in the registry). Multiplexed signals add a `mux` block."""
+    """A CAN channel is addressed either by an absolute `can_id`, or by `can_base` + `can_offset`
+    where `can_base` names an entry of the registry's `can_bases` table (devices whose CAN ids are
+    set by a configurable base, like an expansion unit). Multiplexed signals add a `mux` block."""
     s = ch["src"]
     cid = ch["id"]
     missing = CAN_SIGNAL_KEYS - s.keys()
@@ -215,8 +216,10 @@ def _check_can_src(ch: dict, reg: dict) -> None:
         raise ValueError(f"channel {cid}: src missing {sorted(missing)}")
     if ("can_id" in s) == ("can_offset" in s):
         raise ValueError(f"channel {cid}: src needs exactly one of can_id / can_offset")
-    if "can_offset" in s and "e888_base_id" not in reg:
-        raise ValueError(f"channel {cid}: can_offset needs e888_base_id in the registry")
+    if ("can_base" in s) != ("can_offset" in s):
+        raise ValueError(f"channel {cid}: can_base and can_offset go together")
+    if "can_base" in s and s["can_base"] not in (reg.get("can_bases") or {}):
+        raise ValueError(f"channel {cid}: can_base {s['can_base']!r} is not in the registry's can_bases")
     if s["byte_order"] not in BYTE_ORDERS:
         raise ValueError(f"channel {cid}: bad byte_order {s['byte_order']}")
     if not 1 <= s["length"] <= 32 or not 0 <= s["start_bit"] <= 63:
@@ -259,7 +262,7 @@ def load_registry(path: str) -> dict:
 def can_frame_id(ch: dict, reg: dict) -> int:
     """Absolute CAN id a channel is read from."""
     s = ch["src"]
-    return s["can_id"] if "can_id" in s else reg["e888_base_id"] + s["can_offset"]
+    return s["can_id"] if "can_id" in s else reg["can_bases"][s["can_base"]] + s["can_offset"]
 
 
 def extract_channel(data: bytes, ch: dict) -> float | None:

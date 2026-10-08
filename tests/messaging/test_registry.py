@@ -27,12 +27,14 @@ def _bad_src_cases(good):
     return {
         "missing_key": {k: v for k, v in good["src"].items() if k != "scale"},
         "both_id_forms": {**good["src"], "can_offset": 1},
+        "offset_without_base": {k: v for k, v in good["src"].items() if k != "can_id"} | {"can_offset": 1},
+        "unknown_base": {k: v for k, v in good["src"].items() if k != "can_id"} | {"can_base": "nope", "can_offset": 1},
         "bad_byte_order": {**good["src"], "byte_order": "middle_endian"},
         "mux_value_too_big": {**good["src"], "mux": {"start_bit": 7, "length": 2, "value": 4}},
     }
 
 
-@pytest.mark.parametrize("case", ["missing_key", "both_id_forms", "bad_byte_order", "mux_value_too_big"])
+@pytest.mark.parametrize("case", ["missing_key", "both_id_forms", "offset_without_base", "unknown_base", "bad_byte_order", "mux_value_too_big"])
 def test_registry_rejects_bad_can_src(registry, tmp_path, case):
     good = _can_channels(registry)[0]
     broken = {**registry, "channels": [{**good, "src": _bad_src_cases(good)[case]}]}
@@ -78,7 +80,7 @@ def test_can_channel_matches_dbc(can_channel, registry, m130_db, e888_db):
     """Every CAN channel (active and planned, M130 and multiplexed E888) matches its DBC
     definition and extracts the same values as cantools."""
     ch, s = can_channel, can_channel["src"]
-    db = e888_db if "can_offset" in s else m130_db
+    db = e888_db if "can_base" in s else m130_db     # this repo has one offset-addressed device, the E888
     msg = db.get_message_by_frame_id(m.can_frame_id(ch, registry))
     mux = s.get("mux")
     sigs = [x for x in msg.signals if x.start == s["start_bit"] and x.length == s["length"]
