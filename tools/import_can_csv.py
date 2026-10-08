@@ -1,26 +1,14 @@
-"""Build or extend messaging/registry.yaml from CAN definition files (DBCs).
+"""Create or extend messaging/registry.yaml from CAN definition files (DBCs).
 
-Usage:  uv run python tools/import_can_csv.py [--dry-run] [--registry PATH] [--base PATH] [--config PATH]
+Usage: uv run python tools/import_can_csv.py [--dry-run] [--registry PATH] [--base PATH] [--config PATH]
 
-What it does
-  * registry.yaml missing or empty: starts from messaging/registry_base.yaml (params, device id,
-    your non-CAN channels), then imports the CAN channels of every device in the config.
-  * registry.yaml exists: appends only the signals it does not have yet.
-  Which signals, their ids and friendly names come from tools/import_can_config.yaml.
-
-The CSVs in messaging/data/ hold the same signals as the DBCs but drop the multiplexer
-selector values E888 needs, so the DBCs are the import source.
-
-Rules
-  * Only numeric measurements are imported (signals with a unit, plus the config's
-    `keep_unitless`). Switches, state enums and version bytes are skipped; they can be
-    appended later under new ids.
-  * Idempotent and append-only: a signal already in the registry (same CAN address) is skipped,
-    existing channels are never touched, ids are never reassigned.
-  * New channels are `planned` unless the config marks them active (compiled into the firmware).
-  * rate_hz / priority / live are placeholders: the DBC has no cycle times.
-  * The text is appended so the comments in registry.yaml survive, and the result is validated
-    before anything is written.
+Which devices, signals, ids and names to use is set in tools/import_can_config.yaml.
+  * No registry.yaml (or an empty one): starts from messaging/registry_base.yaml, then adds channels.
+  * registry.yaml exists: adds only signals it does not have yet. Existing channels are never changed.
+  * Only signals with a unit are imported; switches and status codes are skipped.
+  * --dry-run prints how many channels would be added and changes nothing.
+The DBCs are read rather than the CSVs in messaging/data/, which lack multiplexing information.
+rate_hz and priority are placeholders: set the real values in registry.yaml.
 """
 from __future__ import annotations
 
@@ -64,7 +52,7 @@ def auto_name(sig_name: str, unit: str, prefix: str | None) -> str:
 
 def value_range(sig) -> tuple[float, float]:
     lo, hi = sig.minimum, sig.maximum
-    if lo is None or hi is None or (lo == 0 and hi == 0):   # DBC range unset: use raw range
+    if lo is None or hi is None or (lo == 0 and hi == 0):   # DBC gives no range: use what the bits can hold
         raw_lo, raw_hi = ((-(1 << (sig.length - 1)), (1 << (sig.length - 1)) - 1)
                           if sig.is_signed else (0, (1 << sig.length) - 1))
         lo, hi = raw_lo * sig.scale + sig.offset, raw_hi * sig.scale + sig.offset
@@ -72,9 +60,9 @@ def value_range(sig) -> tuple[float, float]:
 
 
 def candidates(dev: dict, db):
-    """Yield (key, sig, addr, mux) for one device in a stable order. `mux` = (sel_start, sel_len, value)."""
+    """Yield the importable signals of one device. `mux` is (selector start bit, selector length, selector value)."""
     skip, keep = set(dev.get("skip_messages", [])), set(dev.get("keep_unitless", []))
-    if "base_id" not in dev:                                   # fixed ids, as written in the DBC
+    if "base_id" not in dev:                                   # CAN ids as written in the DBC
         for msg in sorted(db.messages, key=lambda m: m.frame_id):
             if msg.frame_id in skip:
                 continue
@@ -82,7 +70,7 @@ def candidates(dev: dict, db):
                 if sig.unit or sig.name in keep:
                     yield ("id", msg.frame_id, sig.start, sig.length, None), sig, {"can_id": f"0x{msg.frame_id:X}"}, None
         return
-    for off in dev["offsets"]:                                 # base + offset
+    for off in dev["offsets"]:                                 # CAN id = base + offset
         msg = db.get_message_by_frame_id(dev["base_id"] + off)
         sel = next((s for s in msg.signals if s.is_multiplexer), None)
         for sig in msg.signals:
@@ -125,7 +113,7 @@ def render(chid, name, sig, addr, mux, active, priority=1) -> str:
            f"byte_order: {sig.byte_order}, signed: {str(sig.is_signed).lower()}, "
            f"scale: {fmt(sig.scale)}, offset: {fmt(sig.offset)}{mux_s} }}")
     return (f"  - id: {chid}\n    name: {name}\n    unit: \"{unit}\"\n    source: can\n"
-            f"    rate_hz: 10              # placeholder: DBC has no cycle time\n"
+            f"    rate_hz: 10              # placeholder\n"
             f"    priority: {priority}\n    live: {str(active).lower()}\n    log: true\n"
             f"    min: {fmt(lo)}\n    max: {fmt(hi)}\n"
             f"    status: {'active' if active else 'planned'}\n    src: {src}\n")
@@ -144,8 +132,7 @@ def check_devices(devices: list) -> None:
 
 
 def add_can_bases(text: str, reg: dict, devices: list) -> str:
-    """Make sure registry.yaml's `can_bases` table has an entry for every base+offset device.
-    Existing entries win: the registry is where you record your unit's real base id."""
+    """Add any missing device to registry.yaml's `can_bases` table. Entries already there are kept."""
     have = reg.get("can_bases") or {}
     new = [(d["name"], d["base_id"]) for d in devices if "base_id" in d and d["name"] not in have]
     if not new:
@@ -154,8 +141,7 @@ def add_can_bases(text: str, reg: dict, devices: list) -> str:
     if "can_bases" in reg:
         return re.sub(r"^(can_bases:.*\n)", lambda m: m.group(1) + lines, text, count=1, flags=re.M)
     return re.sub(r"^(device_id: .*\n)",
-                  lambda m: m.group(1) + "can_bases:            # CAN base ids of devices addressed by offset (src.can_base). "
-                  "Match your unit's configuration.\n" + lines, text, count=1, flags=re.M)
+                  lambda m: m.group(1) + "can_bases:            # CAN base ids of units that are set on the unit itself; channels refer to them by name\n" + lines, text, count=1, flags=re.M)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -171,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
     devices = cfg["devices"]
     check_devices(devices)
 
-    # start from the existing registry, or from the base template when there is none
+    # existing registry, or the template when there is none
     text = args.registry.read_text() if args.registry.exists() else ""
     bootstrap = not text.strip()
     if bootstrap:
@@ -188,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         db = dbs.setdefault(dev["dbc"], cantools.database.load_file(str(ROOT / dev["dbc"])))
         pinned, active, friendly = dev.get("pinned", {}), set(dev.get("active", [])), dev.get("names", {})
         lo = dev["first_id"]
-        hi = next((f for f in firsts if f > lo), 1 << 30)       # this device's id block is [lo, hi)
+        hi = next((f for f in firsts if f > lo), 1 << 30)       # this device's ids are lo up to (not including) hi
         for sig_name, p in pinned.items():
             if p["id"] >= min(firsts):
                 raise SystemExit(f"{dev['name']}: pinned id {p['id']} ({sig_name}) must be below the lowest first_id {min(firsts)}")
@@ -198,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
             pin = pinned.get(sig.name)
             if pin:
                 seen_pinned.add(sig.name)
-            if key in have:          # already in the registry (possibly under a pinned id)
+            if key in have:          # already in the registry
                 continue
             if pin:
                 chid, name, is_active, priority = pin["id"], pin["name"], pin.get("active", False), pin.get("priority", 1)
@@ -226,8 +212,8 @@ def main(argv: list[str] | None = None) -> int:
                   count=1, flags=re.M)
     text = add_can_bases(text, reg, devices)
     text = text.rstrip("\n") + "\n\n  # --- imported from the DBCs by tools/import_can_csv.py ---\n" + "\n".join(out)
-    msgcodec.validate_registry(yaml.safe_load(text), "result")      # never write an invalid registry
-    tmp = args.registry.with_suffix(".yaml.tmp")                    # write then rename: no half-written file
+    msgcodec.validate_registry(yaml.safe_load(text), "result")      # never write a broken registry
+    tmp = args.registry.with_suffix(".yaml.tmp")                    # write, then rename: never a half-written file
     tmp.write_text(text)
     tmp.replace(args.registry)
     return 0

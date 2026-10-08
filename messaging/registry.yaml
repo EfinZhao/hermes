@@ -1,28 +1,22 @@
-# Starting point for registry.yaml. tools/import_can_csv.py copies this when registry.yaml is
-# missing or empty, then appends the CAN channels from the DBCs (see tools/import_can_config.yaml).
-# Put your own non-CAN channels and params here. Rules below apply to registry.yaml itself.
+# Channel registry: the list of every measurement the system can send. Each channel has a
+# permanent number (id), a name, a unit and a description of where its value comes from.
+# Firmware and receiver both read this file, so they always agree on what each id means.
 #
-# Channel registry  (the "services.py" of our messaging system)
-#
-# RULES (cereal-style, so old logs stay readable):
-#   1. A channel `id` is permanent. Never reuse it, never renumber it.
-#   2. New channels are appended with the next unused id.
-#   3. Renaming a channel is fine (id is its identity).
-#   4. Never delete. Set `status: deprecated` instead.
-#   5. If a channel's meaning changes (unit, scale, which sensor), give it a NEW id
-#      and deprecate the old one.
-#   6. Any edit to this file bumps `registry_version` by 1.
-#   7. All values are float32 in SI units unless the name says otherwise
-#      (e.g. `_rpm`, `_c`, `_kpa`, `_mm`).
+# Rules (so old logs stay readable):
+#   1. Never reuse or change a channel id. New channels get the next unused id.
+#   2. Never delete a channel: set `status: deprecated`. Renaming is fine.
+#   3. If a channel's meaning changes (unit, scale, sensor), add a new channel instead.
+#   4. Any change to the channels or params raises `registry_version` by 1.
+#   5. Values are floating point numbers; put the unit in the name (_rpm, _c, _kpa, _mm).
 
 registry_version: 2
-device_id: 20          # 1 byte in every packet header. Set a UNIQUE id per device/car (20 is just the example).
-can_bases:            # CAN base ids of devices addressed by offset (src.can_base). Match your unit's configuration.
-  e888: 0xF0         # E888 expansion unit; one of 0xF0/F4/F8/FC
+device_id: 20          # sent in every packet; give each device/car its own number (20 is an example)
+can_bases:            # CAN base ids of units that are set on the unit itself; channels refer to them by name
+  e888: 0xF0         # E888 expansion unit: 0xF0, 0xF4, 0xF8 or 0xFC
 
 # ---------------------------------------------------------------------------
-# PARAMS: tunable settings. These can be changed with a CONFIG message
-# (later: from a remote dashboard). Server rejects values outside min/max.
+# PARAMS: settings that can be changed while running (by a CONFIG message).
+# Values outside min/max are rejected.
 # ---------------------------------------------------------------------------
 params:
   - id: 1
@@ -48,24 +42,23 @@ params:
     desc: How fast buffered packets are drained after the network returns.
 
 # ---------------------------------------------------------------------------
-# CHANNELS
-#   id          u16, permanent (1..32767; 0 and 32768+ are reserved)
-#   name        unambiguous, dotted, lowercase
-#   unit        string
-#   source      can | adc | i2c | synthetic
-#   rate_hz     expected sample rate (used by the receiver for staleness checks)
-#   priority    0 = critical (send every sample live)
-#               1 = normal   (send every sample live, dropped first under load)
-#               2 = low      (send only every `live_decimate`-th sample)
-#   live        send over the live link? (false = SD card only)
-#   log         write to SD card?
-#   live_decimate  (priority 2) keep 1 of every N samples live
-#   min / max   valid range; a value outside it gets the CLAMPED quality flag
-#   status      active | planned | deprecated   (only `active` is compiled in)
-#   src         source-specific block (see examples)
+# CHANNELS. Fields:
+#   id         permanent number, 1 to 32767
+#   name       lowercase and dotted: group.name_unit
+#   unit       text label
+#   source     where the value comes from: can | adc | i2c | synthetic
+#   rate_hz    expected samples per second (lets the receiver notice a silent sensor)
+#   priority   0 = most important, always sent live
+#              1 = normal, dropped first when the link is busy
+#              2 = low, only every `live_decimate`-th sample is sent live
+#   live       send over the live link? (false = SD card only)
+#   log        save to the SD card?
+#   min, max   valid range; a value outside it is cut to the range and flagged
+#   status     active (built into the firmware) | planned | deprecated
+#   src        how to read it (CAN bits, ADC pin, ...)
 # ---------------------------------------------------------------------------
 channels:
-  # --- synthetic test channels: let us build and test everything with no hardware ---
+  # --- test channels that need no hardware ---
   - id: 1
     name: test.counter
     unit: count
@@ -93,7 +86,7 @@ channels:
     status: active
     src: { kind: sine, freq_hz: 0.5 }
 
-  # --- planned sensor channel: shows the shape of a non-CAN source ---
+  # --- example of a non-CAN sensor ---
   - id: 200
     name: suspension.front_left_mm
     unit: mm
@@ -113,7 +106,7 @@ channels:
     name: engine.speed_rpm
     unit: "rpm"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 0
     live: true
     log: true
@@ -126,7 +119,7 @@ channels:
     name: intake.manifold_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: true
     log: true
@@ -139,7 +132,7 @@ channels:
     name: inlet.air_temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -152,7 +145,7 @@ channels:
     name: throttle.position_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: true
     log: true
@@ -165,7 +158,7 @@ channels:
     name: fuel.volume_ul
     unit: "ul"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -178,7 +171,7 @@ channels:
     name: fuel.mixture_aim_lambda
     unit: "lambda"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -191,7 +184,7 @@ channels:
     name: fuel.pressure_sensor_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -204,7 +197,7 @@ channels:
     name: fuel.injector_primary_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -217,7 +210,7 @@ channels:
     name: engine.efficiency_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -230,7 +223,7 @@ channels:
     name: throttle.pedal_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -243,7 +236,7 @@ channels:
     name: engine.load_mg
     unit: "mg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -256,7 +249,7 @@ channels:
     name: ignition.timing_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -269,7 +262,7 @@ channels:
     name: fuel.timing_primary_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -282,7 +275,7 @@ channels:
     name: ignition.cylinder_1_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -295,7 +288,7 @@ channels:
     name: ignition.cylinder_2_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -308,7 +301,7 @@ channels:
     name: ignition.cylinder_3_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -321,7 +314,7 @@ channels:
     name: ignition.cylinder_4_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -334,7 +327,7 @@ channels:
     name: ignition.cylinder_5_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -347,7 +340,7 @@ channels:
     name: ignition.cylinder_6_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -360,7 +353,7 @@ channels:
     name: ignition.cylinder_7_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -373,7 +366,7 @@ channels:
     name: ignition.cylinder_8_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -386,7 +379,7 @@ channels:
     name: ignition.output_cut_average_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -399,7 +392,7 @@ channels:
     name: fuel.output_cut_average_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -412,7 +405,7 @@ channels:
     name: fuel.cyl_1_prim_output_pls_wdth_ms
     unit: "ms"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -425,7 +418,7 @@ channels:
     name: engine.oil_pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -438,7 +431,7 @@ channels:
     name: boost.pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -451,7 +444,7 @@ channels:
     name: boost.aim_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -464,7 +457,7 @@ channels:
     name: boost.actuator_output_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -477,7 +470,7 @@ channels:
     name: gear.lever_force_sensor_n
     unit: "N"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -490,7 +483,7 @@ channels:
     name: inlet.camshaft_aim_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -503,7 +496,7 @@ channels:
     name: inlet.camshaft_bank_1_position_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -516,7 +509,7 @@ channels:
     name: inlet.camshaft_bank_2_position_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -529,7 +522,7 @@ channels:
     name: inlet.cam_bk_1_output_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -542,7 +535,7 @@ channels:
     name: inlet.cam_bk_2_output_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -555,7 +548,7 @@ channels:
     name: exhaust.camshaft_aim_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -568,7 +561,7 @@ channels:
     name: exhaust.camshaft_bank_1_position_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -581,7 +574,7 @@ channels:
     name: exhaust.camshaft_bank_2_position_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -594,7 +587,7 @@ channels:
     name: exh.cam_bk_1_output_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -607,7 +600,7 @@ channels:
     name: exh.cam_bk_2_output_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -620,7 +613,7 @@ channels:
     name: wheel.speed_fl_kmh
     unit: "km/h"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: true
     log: true
@@ -633,7 +626,7 @@ channels:
     name: wheel.speed_fr_kmh
     unit: "km/h"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -646,7 +639,7 @@ channels:
     name: wheel.speed_rl_kmh
     unit: "km/h"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -659,7 +652,7 @@ channels:
     name: wheel.speed_rr_kmh
     unit: "km/h"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -672,7 +665,7 @@ channels:
     name: coolant.temp_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 0
     live: true
     log: true
@@ -685,7 +678,7 @@ channels:
     name: engine.oil_temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -698,7 +691,7 @@ channels:
     name: fuel.temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -711,7 +704,7 @@ channels:
     name: ambient.temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -724,7 +717,7 @@ channels:
     name: airbox.temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -737,7 +730,7 @@ channels:
     name: ecu.battery_v
     unit: "V"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: true
     log: true
@@ -750,7 +743,7 @@ channels:
     name: fuel.used_l
     unit: "l"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -763,7 +756,7 @@ channels:
     name: exhaust.temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -776,7 +769,7 @@ channels:
     name: engine.load_average_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -789,7 +782,7 @@ channels:
     name: engine.speed_limit_rpm
     unit: "rpm"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -802,7 +795,7 @@ channels:
     name: ambient.pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -815,7 +808,7 @@ channels:
     name: ignition.cyl_1_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -828,7 +821,7 @@ channels:
     name: ignition.cyl_2_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -841,7 +834,7 @@ channels:
     name: ignition.cyl_3_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -854,7 +847,7 @@ channels:
     name: ignition.cyl_4_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -867,7 +860,7 @@ channels:
     name: ignition.cyl_5_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -880,7 +873,7 @@ channels:
     name: ignition.cyl_6_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -893,7 +886,7 @@ channels:
     name: ignition.cyl_7_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -906,7 +899,7 @@ channels:
     name: ignition.cyl_8_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -919,7 +912,7 @@ channels:
     name: engine.run_time_s
     unit: "s"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -932,7 +925,7 @@ channels:
     name: ecu.up_time_s
     unit: "s"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -945,7 +938,7 @@ channels:
     name: engine.run_time_total_hour
     unit: "hour"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -958,7 +951,7 @@ channels:
     name: fuel.closed_loop_ctrl_bk_1_trim_ratio
     unit: "ratio"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -971,7 +964,7 @@ channels:
     name: fuel.closed_loop_ctrl_bk_2_trim_ratio
     unit: "ratio"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -984,7 +977,7 @@ channels:
     name: gearbox.temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -997,7 +990,7 @@ channels:
     name: fuel.tank_level_l
     unit: "l"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1010,7 +1003,7 @@ channels:
     name: exhaust.lambda
     unit: "lambda"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1023,7 +1016,7 @@ channels:
     name: exhaust.lambda_bank_1_lambda
     unit: "lambda"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1036,7 +1029,7 @@ channels:
     name: exhaust.lambda_bank_2_lambda
     unit: "lambda"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1049,7 +1042,7 @@ channels:
     name: exhaust.temperature_bank_1_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1062,7 +1055,7 @@ channels:
     name: exhaust.temperature_bank_2_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1075,7 +1068,7 @@ channels:
     name: fuel.injector_sec_contribution_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1088,7 +1081,7 @@ channels:
     name: fuel.timing_secondary_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1101,7 +1094,7 @@ channels:
     name: fuel.injector_duty_cycle_secdry_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1114,7 +1107,7 @@ channels:
     name: fuel.pressure_direct_b1_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1127,7 +1120,7 @@ channels:
     name: fuel.pressure_direct_b1_aim_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1140,7 +1133,7 @@ channels:
     name: fuel.pressure_direct_b1_control_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1153,7 +1146,7 @@ channels:
     name: fuel.pressure_direct_b1_feed_fwd_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1166,7 +1159,7 @@ channels:
     name: fuel.pressure_direct_b1_prop_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1179,7 +1172,7 @@ channels:
     name: fuel.pressure_direct_b1_integral_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1192,7 +1185,7 @@ channels:
     name: fuel.pressure_direct_b2_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1205,7 +1198,7 @@ channels:
     name: fuel.pressure_direct_b2_aim_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1218,7 +1211,7 @@ channels:
     name: fuel.pressure_direct_b2_control_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1231,7 +1224,7 @@ channels:
     name: fuel.pressure_direct_b2_feed_fwd_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1244,7 +1237,7 @@ channels:
     name: fuel.pressure_direct_b2_prop_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1257,7 +1250,7 @@ channels:
     name: fuel.pressure_direct_b2_integral_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1270,7 +1263,7 @@ channels:
     name: brake.pressure_front_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1283,7 +1276,7 @@ channels:
     name: brake.pressure_rear_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1296,7 +1289,7 @@ channels:
     name: coolant.pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1309,7 +1302,7 @@ channels:
     name: steering.pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1322,7 +1315,7 @@ channels:
     name: steering.angle_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1335,7 +1328,7 @@ channels:
     name: inlet.mass_flow_gps
     unit: "g/s"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1348,7 +1341,7 @@ channels:
     name: airbox.mass_flow_gps
     unit: "g/s"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1361,7 +1354,7 @@ channels:
     name: fuel.flow_ml_s
     unit: "ml/s"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1374,7 +1367,7 @@ channels:
     name: fuel.injector_primary_pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1387,7 +1380,7 @@ channels:
     name: fuel.injector_secondary_pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1400,7 +1393,7 @@ channels:
     name: gear.input_shaft_speed_rpm
     unit: "rpm"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1413,7 +1406,7 @@ channels:
     name: gear.output_shaft_speed_rpm
     unit: "rpm"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1426,7 +1419,7 @@ channels:
     name: vehicle.accel_lateral_g
     unit: "g"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1439,7 +1432,7 @@ channels:
     name: vehicle.accel_longitudinal_g
     unit: "g"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1452,7 +1445,7 @@ channels:
     name: vehicle.accel_vertical_g
     unit: "g"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1465,7 +1458,7 @@ channels:
     name: ignition.cylinder_9_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1478,7 +1471,7 @@ channels:
     name: ignition.cylinder_10_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1491,7 +1484,7 @@ channels:
     name: ignition.cylinder_11_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1504,7 +1497,7 @@ channels:
     name: ignition.cylinder_12_knock_level_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1517,7 +1510,7 @@ channels:
     name: vehicle.speed_kmh
     unit: "km/h"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1530,7 +1523,7 @@ channels:
     name: ignition.cyl_9_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1543,7 +1536,7 @@ channels:
     name: ignition.cyl_10_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1556,7 +1549,7 @@ channels:
     name: ignition.cyl_11_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1569,7 +1562,7 @@ channels:
     name: ignition.cyl_12_trim_knock_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1582,7 +1575,7 @@ channels:
     name: lap.time_s
     unit: "s"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1595,7 +1588,7 @@ channels:
     name: lap.time_running_s
     unit: "s"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1608,7 +1601,7 @@ channels:
     name: lap.number
     unit: "count"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1621,7 +1614,7 @@ channels:
     name: lap.distance_m
     unit: "m"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1634,7 +1627,7 @@ channels:
     name: differential.temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1647,7 +1640,7 @@ channels:
     name: exhaust.pressure_bank_1_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1660,7 +1653,7 @@ channels:
     name: exhaust.pressure_bank_2_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1673,7 +1666,7 @@ channels:
     name: engine.crank_case_pressure_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1686,7 +1679,7 @@ channels:
     name: knock.threshold_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1699,7 +1692,7 @@ channels:
     name: logging.system_1_used_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1712,7 +1705,7 @@ channels:
     name: vehicle.speed_limit_kmh
     unit: "km/h"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1725,7 +1718,7 @@ channels:
     name: alt.fuel_timing_primary_blend_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1738,7 +1731,7 @@ channels:
     name: alt.fuel_timing_secondary_blend_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1751,7 +1744,7 @@ channels:
     name: alt.fuel_ignition_timing_blend_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1764,7 +1757,7 @@ channels:
     name: alt.fuel_mixture_aim_blend_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1777,7 +1770,7 @@ channels:
     name: fuel.composition_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1790,7 +1783,7 @@ channels:
     name: alt.fuel_ignition_timing_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1803,7 +1796,7 @@ channels:
     name: alt.fuel_timing_primary_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1816,7 +1809,7 @@ channels:
     name: alt.fuel_timing_secondary_deg
     unit: "deg"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1829,7 +1822,7 @@ channels:
     name: alt.fuel_mixture_aim_lambda
     unit: "lambda"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1842,7 +1835,7 @@ channels:
     name: alt.fuel_pressure_sensor_kpa
     unit: "kPa"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1855,7 +1848,7 @@ channels:
     name: alt.fuel_temperature_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1868,7 +1861,7 @@ channels:
     name: alt.fuel_contribution_efficiency_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1881,7 +1874,7 @@ channels:
     name: auxillary.output_1_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1894,7 +1887,7 @@ channels:
     name: auxillary.output_2_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1907,7 +1900,7 @@ channels:
     name: auxillary.output_3_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1920,7 +1913,7 @@ channels:
     name: auxillary.output_4_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1933,7 +1926,7 @@ channels:
     name: auxillary.output_5_duty_cycle_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1946,7 +1939,7 @@ channels:
     name: e888.av8_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1959,7 +1952,7 @@ channels:
     name: e888.av7_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1972,7 +1965,7 @@ channels:
     name: e888.av5_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1985,7 +1978,7 @@ channels:
     name: e888.av3_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -1998,7 +1991,7 @@ channels:
     name: e888.av1_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2011,7 +2004,7 @@ channels:
     name: e888.tc8_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2024,7 +2017,7 @@ channels:
     name: e888.tc7_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2037,7 +2030,7 @@ channels:
     name: e888.av6_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2050,7 +2043,7 @@ channels:
     name: e888.av4_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2063,7 +2056,7 @@ channels:
     name: e888.av2_mv
     unit: "mV"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2076,7 +2069,7 @@ channels:
     name: e888.dig3_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2089,7 +2082,7 @@ channels:
     name: e888.dig1_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2102,7 +2095,7 @@ channels:
     name: e888.tc5_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2115,7 +2108,7 @@ channels:
     name: e888.tc3_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2128,7 +2121,7 @@ channels:
     name: e888.tc1_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2141,7 +2134,7 @@ channels:
     name: e888.dig4_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2154,7 +2147,7 @@ channels:
     name: e888.dig2_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2167,7 +2160,7 @@ channels:
     name: e888.tc6_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2180,7 +2173,7 @@ channels:
     name: e888.tc4_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2193,7 +2186,7 @@ channels:
     name: e888.tc2_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2206,7 +2199,7 @@ channels:
     name: e888.supply_minus_5v_v
     unit: "V"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2219,7 +2212,7 @@ channels:
     name: e888.cjc1_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2232,7 +2225,7 @@ channels:
     name: e888.supply_4v5_v
     unit: "V"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2245,7 +2238,7 @@ channels:
     name: e888.cjc2_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2258,7 +2251,7 @@ channels:
     name: e888.aux_8v_v
     unit: "V"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2271,7 +2264,7 @@ channels:
     name: e888.cjc3_c
     unit: "C"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2284,7 +2277,7 @@ channels:
     name: e888.aux_5v_v
     unit: "V"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2297,7 +2290,7 @@ channels:
     name: e888.vbat_v
     unit: "V"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2310,7 +2303,7 @@ channels:
     name: e888.pwm_7_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2323,7 +2316,7 @@ channels:
     name: e888.pwm_5_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2336,7 +2329,7 @@ channels:
     name: e888.pwm_3_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2349,7 +2342,7 @@ channels:
     name: e888.pwm_1_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2362,7 +2355,7 @@ channels:
     name: e888.pwm_7_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2375,7 +2368,7 @@ channels:
     name: e888.pwm_5_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2388,7 +2381,7 @@ channels:
     name: e888.pwm_3_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2401,7 +2394,7 @@ channels:
     name: e888.pwm_1_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2414,7 +2407,7 @@ channels:
     name: e888.pwm_8_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2427,7 +2420,7 @@ channels:
     name: e888.pwm_6_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2440,7 +2433,7 @@ channels:
     name: e888.pwm_4_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2453,7 +2446,7 @@ channels:
     name: e888.pwm_2_duty_pct
     unit: "%"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2466,7 +2459,7 @@ channels:
     name: e888.pwm_8_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2479,7 +2472,7 @@ channels:
     name: e888.pwm_6_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2492,7 +2485,7 @@ channels:
     name: e888.pwm_4_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
@@ -2505,7 +2498,7 @@ channels:
     name: e888.pwm_2_frequency_hz
     unit: "Hz"
     source: can
-    rate_hz: 10              # placeholder: DBC has no cycle time
+    rate_hz: 10              # placeholder
     priority: 1
     live: false
     log: true
