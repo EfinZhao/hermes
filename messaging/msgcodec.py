@@ -227,11 +227,10 @@ def _check_can_src(ch: dict, reg: dict) -> None:
         raise ValueError(f"channel {cid}: bad mux block")
 
 
-def load_registry(path: str) -> dict:
-    with open(path) as f:
-        reg = yaml.safe_load(f)
+def validate_registry(reg: object, source: str = "registry") -> dict:
+    """Check an already-parsed registry; return it, or raise ValueError."""
     if not isinstance(reg, dict) or "channels" not in reg or "params" not in reg:
-        raise ValueError(f"{path}: not a registry (file empty, or missing params/channels)")
+        raise ValueError(f"{source}: not a registry (file empty, or missing params/channels)")
     seen_ids, seen_names = set(), set()
     for ch in reg["channels"]:
         if not 1 <= ch["id"] <= 32767:
@@ -250,6 +249,11 @@ def load_registry(path: str) -> dict:
     if len(pids) != len(set(pids)):
         raise ValueError("duplicate param id")
     return reg
+
+
+def load_registry(path: str) -> dict:
+    with open(path) as f:
+        return validate_registry(yaml.safe_load(f), path)
 
 
 def can_frame_id(ch: dict, reg: dict) -> int:
