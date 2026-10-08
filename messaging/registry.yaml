@@ -1,0 +1,143 @@
+# AFR-20 channel registry  (the "services.py" of our messaging system)
+#
+# RULES (cereal-style, so old logs stay readable):
+#   1. A channel `id` is permanent. Never reuse it, never renumber it.
+#   2. New channels are appended with the next unused id.
+#   3. Renaming a channel is fine (id is its identity).
+#   4. Never delete. Set `status: deprecated` instead.
+#   5. If a channel's meaning changes (unit, scale, which sensor), give it a NEW id
+#      and deprecate the old one.
+#   6. Any edit to this file bumps `registry_version` by 1.
+#   7. All values are float32 in SI units unless the name says otherwise
+#      (e.g. `_rpm`, `_c`, `_kpa`, `_mm`).
+
+registry_version: 1
+device_id: 20          # 1 byte in every packet header; identifies the board/car
+
+# ---------------------------------------------------------------------------
+# PARAMS: tunable settings. These can be changed with a CONFIG message
+# (later: from the pit wall dashboard). Server rejects values outside min/max.
+# ---------------------------------------------------------------------------
+params:
+  - id: 1
+    name: batch_window_ms
+    default: 100
+    min: 20
+    max: 1000
+    unit: ms
+    desc: How often the packetizer closes a packet.
+  - id: 2
+    name: max_packet_bytes
+    default: 1200
+    min: 200
+    max: 1400
+    unit: bytes
+    desc: Packets are split so none exceeds this size (stays under typical MTU).
+  - id: 3
+    name: backfill_rate_pps
+    default: 5
+    min: 1
+    max: 50
+    unit: packets/s
+    desc: How fast buffered packets are drained after the network returns.
+
+# ---------------------------------------------------------------------------
+# CHANNELS
+#   id          u16, permanent (1..32767; 0 and 32768+ are reserved)
+#   name        unambiguous, dotted, lowercase
+#   unit        string
+#   source      can | adc | i2c | synthetic
+#   rate_hz     expected sample rate (used by the pit wall for staleness checks)
+#   priority    0 = critical (send every sample live)
+#               1 = normal   (send every sample live, dropped first under load)
+#               2 = low      (send only every `live_decimate`-th sample)
+#   live        send over LTE?          (false = SD card only)
+#   log         write to SD card?
+#   live_decimate  (priority 2) keep 1 of every N samples live
+#   min / max   valid range; a value outside it gets the CLAMPED quality flag
+#   status      active | planned | deprecated   (only `active` is compiled in)
+#   src         source-specific block (see examples)
+# ---------------------------------------------------------------------------
+channels:
+  # --- synthetic test channels: let us build and test everything with no hardware ---
+  - id: 1
+    name: test.counter
+    unit: count
+    source: synthetic
+    rate_hz: 10
+    priority: 1
+    live: true
+    log: true
+    min: 0
+    max: 1000000
+    status: active
+    src: { kind: counter }
+
+  - id: 2
+    name: test.sine
+    unit: ""
+    source: synthetic
+    rate_hz: 100
+    priority: 2
+    live: true
+    live_decimate: 10
+    log: true
+    min: -1
+    max: 1
+    status: active
+    src: { kind: sine, freq_hz: 0.5 }
+
+  # --- real CAN channels from the M130 DBC (bit numbering exactly as in the DBC) ---
+  - id: 100
+    name: engine.speed_rpm
+    unit: rpm
+    source: can
+    rate_hz: 10
+    priority: 0
+    live: true
+    log: true
+    min: 0
+    max: 16000
+    status: active
+    src: { can_id: 0x640, bus: 0, start_bit: 7, length: 16, byte_order: big_endian, signed: false, scale: 1.0, offset: 0.0 }
+
+  - id: 101
+    name: coolant.temp_c
+    unit: C
+    source: can
+    rate_hz: 10
+    priority: 0
+    live: true
+    log: true
+    min: -40
+    max: 215
+    status: active
+    src: { can_id: 0x649, bus: 0, start_bit: 7, length: 8, byte_order: big_endian, signed: false, scale: 1.0, offset: -40.0 }
+
+  - id: 102
+    name: ecu.battery_v
+    unit: V
+    source: can
+    rate_hz: 10
+    priority: 1
+    live: true
+    log: true
+    min: 0
+    max: 25.5
+    status: active
+    src: { can_id: 0x649, bus: 0, start_bit: 47, length: 8, byte_order: big_endian, signed: false, scale: 0.1, offset: 0.0 }
+
+  # --- planned sensor channel: shows the shape of a non-CAN source ---
+  - id: 200
+    name: suspension.front_left_mm
+    unit: mm
+    source: adc
+    rate_hz: 500
+    priority: 2
+    live: true
+    live_decimate: 50        # ~10 Hz live; full rate goes to the SD card
+    log: true
+    min: 0
+    max: 100
+    status: planned
+    src: { adc_channel: 0, scale: 0.0305, offset: 0.0 }   # placeholder calibration
