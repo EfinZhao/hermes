@@ -1,0 +1,103 @@
+# Template for registry.yaml. tools/import_can_csv.py copies it when registry.yaml is missing
+# or empty, then adds the CAN channels. Put your own params and non-CAN channels here.
+#
+# Channel registry: the list of every measurement the system can send. Each channel has a
+# permanent number (id), a name, a unit and a description of where its value comes from.
+# Firmware and receiver both read this file, so they always agree on what each id means.
+#
+# Rules (so old logs stay readable):
+#   1. Never reuse or change a channel id. New channels get the next unused id.
+#   2. Never delete a channel: set `status: deprecated`. Renaming is fine.
+#   3. If a channel's meaning changes (unit, scale, sensor), add a new channel instead.
+#   4. Any change to the channels or params raises `registry_version` by 1.
+#   5. Values are floating point numbers; put the unit in the name (_rpm, _c, _kpa, _mm).
+
+registry_version: 1
+device_id: 20          # sent in every packet; give each device/car its own number (20 is an example)
+
+# ---------------------------------------------------------------------------
+# PARAMS: settings that can be changed while running (by a CONFIG message).
+# Values outside min/max are rejected.
+# ---------------------------------------------------------------------------
+params:
+  - id: 1
+    name: batch_window_ms
+    default: 100
+    min: 20
+    max: 1000
+    unit: ms
+    desc: How often the packetizer closes a packet.
+  - id: 2
+    name: max_packet_bytes
+    default: 1200
+    min: 200
+    max: 1400
+    unit: bytes
+    desc: Packets are split so none exceeds this size (stays under typical MTU).
+  - id: 3
+    name: backfill_rate_pps
+    default: 5
+    min: 1
+    max: 50
+    unit: packets/s
+    desc: How fast buffered packets are drained after the network returns.
+
+# ---------------------------------------------------------------------------
+# CHANNELS. Fields:
+#   id         permanent number, 1 to 32767
+#   name       lowercase and dotted: group.name_unit
+#   unit       text label
+#   source     where the value comes from: can | adc | i2c | synthetic
+#   rate_hz    expected samples per second (lets the receiver notice a silent sensor)
+#   priority   0 = most important, always sent live
+#              1 = normal, dropped first when the link is busy
+#              2 = low, only every `live_decimate`-th sample is sent live
+#   live       send over the live link? (false = SD card only)
+#   log        save to the SD card?
+#   min, max   valid range; a value outside it is cut to the range and flagged
+#   status     active (built into the firmware) | planned | deprecated
+#   src        how to read it (CAN bits, ADC pin, ...)
+# ---------------------------------------------------------------------------
+channels:
+  # --- test channels that need no hardware ---
+  - id: 1
+    name: test.counter
+    unit: count
+    source: synthetic
+    rate_hz: 10
+    priority: 1
+    live: true
+    log: true
+    min: 0
+    max: 1000000
+    status: active
+    src: { kind: counter }
+
+  - id: 2
+    name: test.sine
+    unit: ""
+    source: synthetic
+    rate_hz: 100
+    priority: 2
+    live: true
+    live_decimate: 10
+    log: true
+    min: -1
+    max: 1
+    status: active
+    src: { kind: sine, freq_hz: 0.5 }
+
+  # --- example of a non-CAN sensor ---
+  - id: 200
+    name: suspension.front_left_mm
+    unit: mm
+    source: adc
+    rate_hz: 500
+    priority: 2
+    live: true
+    live_decimate: 50        # ~10 Hz live; full rate goes to the SD card
+    log: true
+    min: 0
+    max: 100
+    status: planned
+    src: { adc_channel: 0, scale: 0.0305, offset: 0.0 }   # placeholder calibration

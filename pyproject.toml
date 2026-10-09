@@ -1,0 +1,14 @@
+[project]
+name = "hermes"
+version = "0.1.0"
+description = "Versioned binary telemetry messaging for CAN-based vehicles"
+requires-python = ">=3.11"
+dependencies = ["pyyaml"]
+
+[dependency-groups]
+dev = ["cantools", "pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["messaging", "tests"]
+addopts = "-ra --strict-markers"

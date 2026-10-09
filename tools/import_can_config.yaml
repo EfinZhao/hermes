@@ -1,0 +1,56 @@
+# Settings for tools/import_can_csv.py (run: uv run python tools/import_can_csv.py).
+# List each CAN device (ECU, expansion unit, ...) with its DBC file, the file that describes
+# its CAN messages. The importer turns their numeric signals into channels in registry.yaml.
+#
+# Channel ids never change once written, so each device gets its own block of ids starting at
+# `first_id`. Blocks must not overlap.
+#
+# Device fields:
+#   name           label for the device; also the registry's `can_base` name
+#   dbc            path to the DBC file, from the repo root
+#   first_id       first channel id for this device
+#   base_id        only for units whose CAN ids depend on a setting on the unit itself
+#                  (E888: 0xF0, 0xF4, 0xF8 or 0xFC). Needs `offsets`.
+#   offsets        with base_id: which messages to read, as base_id + offset
+#   prefix         start of generated channel names (prefix e888 gives e888.av1_mv)
+#   skip_messages  CAN ids to ignore
+#   keep_unitless  signals without a unit are skipped unless listed here
+#   pinned         signals given a fixed id (below every first_id) and a chosen name
+#   names          chosen names for other signals; the rest get a generated name
+#   active         signals imported as `active`; all others are `planned`
+# For two units of the same type (two E888s), add two entries with the same DBC and a different
+# name, base_id, first_id and prefix.
+
+devices:
+  - name: ecu                       # M130 engine ECU
+    dbc: messaging/dbc/M1_General_0x640_0x650_0x670_Ver5.dbc
+    first_id: 300
+    skip_messages: [0x118, 0x119, 0x11A]    # lower-resolution copies sent to the PDM
+    keep_unitless: [Lap_Number]
+    pinned:
+      Engine_Speed:        { id: 100, name: engine.speed_rpm, priority: 0, active: true }
+      Coolant_Temperature: { id: 101, name: coolant.temp_c,   priority: 0, active: true }
+      ECU_Battery_Voltage: { id: 102, name: ecu.battery_v,    priority: 1, active: true }
+    names:
+      Throttle_Position: throttle.position_pct
+      Inlet_Manifold_Pressure: intake.manifold_kpa
+      Wheel_Speed_Front_Left: wheel.speed_fl_kmh
+      Wheel_Speed_Front_Right: wheel.speed_fr_kmh
+      Wheel_Speed_Rear_Left: wheel.speed_rl_kmh
+      Wheel_Speed_Rear_Right: wheel.speed_rr_kmh
+    active:
+      - Throttle_Position
+      - Inlet_Manifold_Pressure
+      - Wheel_Speed_Front_Left
+
+  - name: e888                      # E888 expansion unit
+    dbc: messaging/dbc/E8xx.dbc
+    base_id: 0xF0
+    offsets: [0, 1, 3]              # +0 inputs, +1 status, +3 PWM outputs
+    first_id: 1000
+    prefix: e888
+    names:
+      minus_5V: e888.supply_minus_5v_v
+      _4_5v: e888.supply_4v5_v
+      _8vAux: e888.aux_8v_v
+      _5vAux: e888.aux_5v_v
