@@ -41,7 +41,9 @@ class Env:
         self.registry.write_text(yaml.safe_dump(reg))
         code = gen.main(["--registry", str(self.registry), "--archive", str(self.archive),
                          "--header", str(self.header), *flags])
-        return code, self.capsys.readouterr().err
+        captured = self.capsys.readouterr()
+        self.out = captured.out
+        return code, captured.err
 
     def release(self, reg):
         """Generate and archive `reg` as a released version."""
@@ -272,7 +274,37 @@ def test_check_mode_writes_nothing_and_flags_stale_files(released):
     assert env.header.read_text() == "// stale\n"          # --check never writes
 
 
-def test_check_mode_flags_missing_snapshot(env):
+def test_check_mode_does_not_need_a_snapshot(env):
+    """Archives are local to each team, so a fresh checkout (no snapshots) must still pass --check."""
+    code, _ = env.run(base_registry())          # writes header + local snapshot
+    shutil.rmtree(env.archive)
     code, err = env.run(base_registry(), "--check")
-    assert code == 1 and "registry_v1.json is missing" in err
+    assert code == 0, err
     assert not env.archive.exists()
+
+
+def test_notes_when_there_are_no_snapshots(env):
+    env.run(base_registry())
+    assert "no snapshots" in env.out
+    env.run(base_registry())
+    assert "no snapshots" not in env.out
+
+
+# ---------------------------------------------------------------- header layout
+@pytest.mark.parametrize("name", list(gen.STRUCTS))
+def test_row_format_comment_matches_struct_and_rows(released, name):
+    """The one-line comment above each struct lists its fields in table order, and every table row
+    has one value per field."""
+    env, _ = released
+    lines = env.header.read_text().splitlines()
+    fields = [f for _, f in gen.STRUCTS[name][1]]
+    comment = next(l for l in lines if l.startswith(f"// {name}:"))
+    assert comment.endswith("Row: {" + ", ".join(fields) + "}")
+    table = {"Param": "kParams", "Channel": "kChannels", "CanSignal": "kCanSignals"}[name]
+    start = next(i for i, l in enumerate(lines) if f" {table}[" in l)
+    end = next(i for i in range(start, len(lines)) if lines[i] == "};")
+    rows = [l for l in lines[start + 1:end] if l.startswith("    {")]
+    assert rows
+    for row in rows:
+        values = row.split("},")[0].lstrip(" {").split(", ")
+        assert len(values) == len(fields), row

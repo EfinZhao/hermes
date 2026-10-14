@@ -14,6 +14,7 @@ constexpr uint32_t kCanBase_e888 = 0xF0;
 
 enum class Source : uint8_t { kCan, kAdc, kI2c, kSynthetic };
 
+// Param: a setting the receiver can change at runtime with a CONFIG message. Row: {id, default_value, min, max}
 struct Param {
   uint16_t id;
   float default_value;
@@ -21,7 +22,7 @@ struct Param {
   float max;
 };
 
-// priority: 0 critical, 1 normal, 2 low. live_decimate: with priority 2, send 1 of every N samples live.
+// Channel: how one measurement is sent. priority: 0 critical, 1 normal, 2 low (only 1 of every live_decimate samples goes live). Row: {id, source, priority, live, log, live_decimate, rate_hz, min, max}
 struct Channel {
   uint16_t id;
   Source source;
@@ -34,9 +35,7 @@ struct Channel {
   float max;
 };
 
-// Bit numbering is as in the DBC file. frame_id is the absolute CAN id (base + offset already added).
-// value = raw * scale + offset, with scale and offset in double precision as in the reference codec.
-// If has_mux, the signal is only valid when the multiplexer selector bits equal mux_value.
+// CanSignal: where a CAN channel sits in a frame: value = raw * scale + offset (double, as in the Python codec). Row: {channel_id, frame_id, extended, bus, start_bit, length, big_endian, is_signed, scale, offset, has_mux, mux_start_bit, mux_length, mux_value}
 struct CanSignal {
   uint16_t channel_id;
   uint32_t frame_id;

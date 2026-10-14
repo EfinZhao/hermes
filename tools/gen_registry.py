@@ -6,13 +6,13 @@ Usage: uv run python tools/gen_registry.py [--check] [--bump] [--registry P] [--
      no channel or param may be deleted, no id may change meaning (unit, source, src), a
      deprecated channel stays deprecated, and registry_version must go up by exactly 1 when
      anything changed (and stay the same when nothing did).
-  2. Writes messaging/registry_archive/registry_vN.json, a snapshot of this version (the
-     receiver reads old snapshots to decode old logs).
+  2. Writes messaging/registry_archive/registry_vN.json, a snapshot of this version. The archive
+     is local (git-ignored): each team keeps its own, and the rules only compare against the
+     snapshots found there. With no snapshots the rules have nothing to check.
   3. Writes firmware/main/registry_gen.h with the `active` channels, params and CAN signals.
 
   --bump   raise registry_version in registry.yaml by 1 if the registry changed
-  --check  change nothing; fail if a rule is broken or a generated file is missing/out of date
-           (for CI)
+  --check  change nothing; fail if a rule is broken or the header is missing/out of date (for CI)
 """
 from __future__ import annotations
 
@@ -111,6 +111,29 @@ def check_rules(reg: dict, snaps: dict[int, dict]) -> list[str]:
 
 
 # ---------------------------------------------------------------- C++ header
+# Each struct: (one-line description, [(C++ type, field name), ...]). The field order is the column
+# order of every table row, and the description line printed above the struct shows it.
+STRUCTS = {
+    "Param": ("a setting the receiver can change at runtime with a CONFIG message.",
+              [("uint16_t", "id"), ("float", "default_value"), ("float", "min"), ("float", "max")]),
+    "Channel": ("how one measurement is sent. priority: 0 critical, 1 normal, 2 low (only 1 of every live_decimate "
+                "samples goes live).",
+                [("uint16_t", "id"), ("Source", "source"), ("uint8_t", "priority"), ("bool", "live"), ("bool", "log"),
+                 ("uint16_t", "live_decimate"), ("float", "rate_hz"), ("float", "min"), ("float", "max")]),
+    "CanSignal": ("where a CAN channel sits in a frame: value = raw * scale + offset (double, as in the Python codec).",
+                  [("uint16_t", "channel_id"), ("uint32_t", "frame_id"), ("bool", "extended"), ("uint8_t", "bus"),
+                   ("uint8_t", "start_bit"), ("uint8_t", "length"), ("bool", "big_endian"), ("bool", "is_signed"),
+                   ("double", "scale"), ("double", "offset"), ("bool", "has_mux"), ("uint8_t", "mux_start_bit"),
+                   ("uint8_t", "mux_length"), ("uint8_t", "mux_value")]),
+}
+
+
+def struct_lines(name: str) -> list[str]:
+    desc, fields = STRUCTS[name]
+    row = ", ".join(f for _, f in fields)
+    return [f"// {name}: {desc} Row: {{{row}}}", f"struct {name} {{"] + [f"  {t} {f};" for t, f in fields] + ["};", ""]
+
+
 def cpp_float(v: float) -> str:          # float32 literal
     return repr(float(v)) + "f"
 
@@ -151,46 +174,9 @@ def render_header(reg: dict) -> str:
         "",
         "enum class Source : uint8_t { kCan, kAdc, kI2c, kSynthetic };",
         "",
-        "struct Param {",
-        "  uint16_t id;",
-        "  float default_value;",
-        "  float min;",
-        "  float max;",
-        "};",
-        "",
-        "// priority: 0 critical, 1 normal, 2 low. live_decimate: with priority 2, send 1 of every N samples live.",
-        "struct Channel {",
-        "  uint16_t id;",
-        "  Source source;",
-        "  uint8_t priority;",
-        "  bool live;",
-        "  bool log;",
-        "  uint16_t live_decimate;",
-        "  float rate_hz;",
-        "  float min;",
-        "  float max;",
-        "};",
-        "",
-        "// Bit numbering is as in the DBC file. frame_id is the absolute CAN id (base + offset already added).",
-        "// value = raw * scale + offset, with scale and offset in double precision as in the reference codec.",
-        "// If has_mux, the signal is only valid when the multiplexer selector bits equal mux_value.",
-        "struct CanSignal {",
-        "  uint16_t channel_id;",
-        "  uint32_t frame_id;",
-        "  bool extended;",
-        "  uint8_t bus;",
-        "  uint8_t start_bit;",
-        "  uint8_t length;",
-        "  bool big_endian;",
-        "  bool is_signed;",
-        "  double scale;",
-        "  double offset;",
-        "  bool has_mux;",
-        "  uint8_t mux_start_bit;",
-        "  uint8_t mux_length;",
-        "  uint8_t mux_value;",
-        "};",
-        "",
+        *struct_lines("Param"),
+        *struct_lines("Channel"),
+        *struct_lines("CanSignal"),
         f"constexpr size_t kNumParams = {len(reg['params'])};",
         f"constexpr size_t kNumChannels = {len(active)};",
         f"constexpr size_t kNumCanSignals = {len(can)};",
@@ -239,6 +225,8 @@ def main(argv: list[str] | None = None) -> int:
     text = args.registry.read_text()
     reg = msgcodec.validate_registry(yaml.safe_load(text), str(args.registry))
     snaps = load_snapshots(args.archive)
+    if not snaps:
+        print(f"note: no snapshots in {args.archive}; the append-only rules had nothing to compare against")
 
     if args.bump and snaps:
         latest = max(snaps)
@@ -252,8 +240,6 @@ def main(argv: list[str] | None = None) -> int:
     snap_path = args.archive / f"registry_v{reg['registry_version']}.json"
     want_header = render_header(reg)
     if args.check and not errors:
-        if not snap_path.exists():
-            errors.append(f"{snap_path.name} is missing; run tools/gen_registry.py")
         if not args.header.exists() or args.header.read_text() != want_header:
             errors.append(f"{args.header} is missing or out of date; run tools/gen_registry.py")
     if errors:

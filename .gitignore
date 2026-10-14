@@ -1,3 +1,6 @@
 .claude/
 .venv/
 __pycache__/
+
+messaging/registry_archive/*
+!messaging/registry_archive/README.md
