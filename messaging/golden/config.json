@@ -1,0 +1,76 @@
+{
+  "description": "CONFIG packets: change a setting on the device.",
+  "format_version": 1,
+  "magic": "0x4d48",
+  "header_bytes": 20,
+  "footer_bytes": 4,
+  "cases": [
+    {
+      "name": "single_param",
+      "description": "Set param 1 to 50.0.",
+      "kind": "encode",
+      "msg_type": "CONFIG",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 7, "base_ms": 0, "flags": 0},
+      "records": [
+        {"param_id": 1, "value": 50.0, "value_bits": "0x42480000"}
+      ],
+      "packets": [
+        {
+          "hex": "484d0101140001000700000000000000010006000100000048422b15c5de",
+          "size": 30,
+          "header": {"msg_type": 1, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 7, "base_ms": 0, "record_count": 1, "payload_len": 6},
+          "crc32": "0xdec5152b",
+          "records": [
+            {"param_id": 1, "value": 50.0, "value_bits": "0x42480000"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "several_params",
+      "description": "Three params in one packet.",
+      "kind": "encode",
+      "msg_type": "CONFIG",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 8, "base_ms": 0, "flags": 0},
+      "records": [
+        {"param_id": 1, "value": 100.0, "value_bits": "0x42c80000"},
+        {"param_id": 2, "value": 1200.0, "value_bits": "0x44960000"},
+        {"param_id": 3, "value": 5.0, "value_bits": "0x40a00000"}
+      ],
+      "packets": [
+        {
+          "hex": "484d01011400010008000000000000000300120001000000c84202000000964403000000a0402da207ea",
+          "size": 42,
+          "header": {"msg_type": 1, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 8, "base_ms": 0, "record_count": 3, "payload_len": 18},
+          "crc32": "0xea07a22d",
+          "records": [
+            {"param_id": 1, "value": 100.0, "value_bits": "0x42c80000"},
+            {"param_id": 2, "value": 1200.0, "value_bits": "0x44960000"},
+            {"param_id": 3, "value": 5.0, "value_bits": "0x40a00000"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extreme_values",
+      "description": "Largest param id and a negative value.",
+      "kind": "encode",
+      "msg_type": "CONFIG",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 4294967295, "base_ms": 0, "flags": 0},
+      "records": [
+        {"param_id": 65535, "value": -0.5, "value_bits": "0xbf000000"}
+      ],
+      "packets": [
+        {
+          "hex": "484d010114000100ffffffff0000000001000600ffff000000bfb4db5fb9",
+          "size": 30,
+          "header": {"msg_type": 1, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 4294967295, "base_ms": 0, "record_count": 1, "payload_len": 6},
+          "crc32": "0xb95fdbb4",
+          "records": [
+            {"param_id": 65535, "value": -0.5, "value_bits": "0xbf000000"}
+          ]
+        }
+      ]
+    }
+  ]
+}

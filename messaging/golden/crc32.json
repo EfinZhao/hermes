@@ -1,0 +1,15 @@
+{
+  "description": "CRC-32 (IEEE, as zlib) test vectors. A packet's last 4 bytes are this over the rest.",
+  "format_version": 1,
+  "magic": "0x4d48",
+  "header_bytes": 20,
+  "footer_bytes": 4,
+  "cases": [
+    {"name": "empty", "description": "CRC-32 (IEEE) of empty.", "kind": "crc32", "input_hex": "", "crc32": "0x00000000"},
+    {"name": "the standard CRC-32 check string", "description": "CRC-32 (IEEE) of the standard CRC-32 check string.", "kind": "crc32", "input_hex": "313233343536373839", "crc32": "0xcbf43926"},
+    {"name": "one byte", "description": "CRC-32 (IEEE) of one byte.", "kind": "crc32", "input_hex": "61", "crc32": "0xe8b7be43"},
+    {"name": "a sentence", "description": "CRC-32 (IEEE) of a sentence.", "kind": "crc32", "input_hex": "54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67", "crc32": "0x414fa339"},
+    {"name": "32 zero bytes", "description": "CRC-32 (IEEE) of 32 zero bytes.", "kind": "crc32", "input_hex": "0000000000000000000000000000000000000000000000000000000000000000", "crc32": "0x190a55ad"},
+    {"name": "every byte value", "description": "CRC-32 (IEEE) of every byte value.", "kind": "crc32", "input_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff", "crc32": "0x29058c73"}
+  ]
+}
