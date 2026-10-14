@@ -7,8 +7,9 @@
 #
 # Rules (so old logs stay readable):
 #   1. Never reuse or change a channel id. New channels get the next unused id.
-#   2. Never delete a channel: set `status: deprecated`. Renaming is fine.
-#   3. If a channel's meaning changes (unit, scale, sensor), add a new channel instead.
+#   2. Once a channel has been `active`, never delete it: set `status: deprecated`. Renaming is fine.
+#   3. Once a channel has been `active`, if its meaning changes (unit, scale, sensor), add a new
+#      channel instead. Planned channels can still be changed freely.
 #   4. Any change to the channels or params raises `registry_version` by 1.
 #   5. Values are floating point numbers; put the unit in the name (_rpm, _c, _kpa, _mm).
 
@@ -56,7 +57,7 @@ params:
 #   log        save to the SD card?
 #   min, max   valid range; a value outside it is cut to the range and flagged
 #   status     active (built into the firmware) | planned | deprecated
-#   src        how to read it (CAN bits, ADC pin, ...)
+#   src        how to read it (CAN bits, ADC pin, ...). CAN ids above 0x7FF need `extended: true`.
 # ---------------------------------------------------------------------------
 channels:
   # --- test channels that need no hardware ---

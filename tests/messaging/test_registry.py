@@ -51,6 +51,33 @@ def test_empty_registry_gives_clear_error(tmp_path):
         m.load_registry(str(path))
 
 
+def _registry_with(can_src_changes, registry):
+    good = next(c for c in registry["channels"] if c["source"] == "can")
+    return {**registry, "channels": [{**good, "src": {**good["src"], **can_src_changes}}]}
+
+
+def _load(reg, tmp_path):
+    path = tmp_path / "r.yaml"
+    path.write_text(yaml.safe_dump(reg))
+    return m.load_registry(str(path))
+
+
+def test_extended_can_ids(registry, tmp_path):
+    ok = _load(_registry_with({"can_id": 0x18FEF100, "extended": True}, registry), tmp_path)
+    assert ok["channels"][0]["src"]["extended"] is True
+    _load(_registry_with({"can_id": 0x100, "extended": True}, registry), tmp_path)      # low id, still 29-bit
+
+
+@pytest.mark.parametrize("changes, message", [
+    ({"can_id": 0x800}, "too large for a standard frame; set extended: true"),
+    ({"can_id": 0x20000000, "extended": True}, "is too large"),
+    ({"extended": "yes"}, "extended must be true or false"),
+])
+def test_rejects_bad_extended_or_oversized_can_ids(registry, tmp_path, changes, message):
+    with pytest.raises(ValueError, match=message):
+        _load(_registry_with(changes, registry), tmp_path)
+
+
 def test_mux_wrong_selector_returns_none():
     ch = {"src": {"start_bit": 15, "length": 8, "byte_order": "big_endian", "signed": False,
                   "scale": 1.0, "offset": 0.0, "mux": {"start_bit": 7, "length": 2, "value": 1}}}

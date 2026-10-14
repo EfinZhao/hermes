@@ -10,5 +10,5 @@ dev = ["cantools", "pytest"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["messaging", "tests"]
+pythonpath = ["messaging", "tools", "tests"]
 addopts = "-ra --strict-markers"
