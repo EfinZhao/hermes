@@ -140,6 +140,8 @@ class Packetizer:
             return channel_id, dt, float(value), quality
         if msg_type == RAW_CAN:
             can_id, bus, dlc, data = rest
+            if len(data) > 8:
+                raise ValueError(f"RAW_CAN data is {len(data)} bytes; the record holds at most 8")
             return dt, can_id, bus, dlc, bytes(data).ljust(8, b"\0")
         raise ValueError("Packetizer.build supports DATA and RAW_CAN")
 
@@ -166,10 +168,17 @@ class PacketRing:
 
 
 # ---------------------------------------------------------------- server helpers
-def missing_between(last_seq: int, new_seq: int) -> int:
-    """How many packets were skipped between two consecutively received sequence numbers
-    (handles u32 wrap)."""
-    return (new_seq - last_seq - 1) & 0xFFFFFFFF
+def missing_between(last_seq: int, new_seq: int) -> int | None:
+    """How many packets were skipped between the last packet received and a new one (handles u32 wrap).
+
+    Returns None when `new_seq` is a duplicate or an older packet (it is within half the 32-bit
+    range behind `last_seq`); the caller should drop it or treat it as a late arrival.
+    A device reboot (seq restarts at 0 and base_ms goes backwards) looks like an old packet here;
+    spotting it needs base_ms, so that is the receiver's job."""
+    ahead = (new_seq - last_seq) & 0xFFFFFFFF
+    if ahead == 0 or ahead >= 1 << 31:
+        return None
+    return ahead - 1
 
 
 def abs_time_ms(pkt: Packet, dt_ms: int) -> int:
@@ -178,21 +187,38 @@ def abs_time_ms(pkt: Packet, dt_ms: int) -> int:
 
 
 # ---------------------------------------------------------------- CAN signal extraction
+class FrameTooShort(ValueError):
+    """The CAN frame has fewer bytes than the signal needs."""
+
+
+def bit_positions(start_bit: int, length: int, byte_order: str) -> list[int]:
+    """Frame bit numbers (byte * 8 + bit, as in a DBC) of a signal, least significant bit first
+    for little-endian (Intel) and most significant bit first for big-endian (Motorola)."""
+    if byte_order == "little_endian":            # Intel: start bit is the LSB
+        return [start_bit + i for i in range(length)]
+    if byte_order == "big_endian":               # Motorola: start bit is the MSB
+        out, p = [], start_bit
+        for _ in range(length):
+            out.append(p)
+            p = (p // 8 + 1) * 8 + 7 if p % 8 == 0 else p - 1
+        return out
+    raise ValueError(byte_order)
+
+
 def extract_signal(data: bytes, start_bit: int, length: int, byte_order: str,
                    signed: bool, scale: float, offset: float) -> float:
-    """DBC-style extraction. `start_bit` is numbered exactly as in a DBC file."""
+    """DBC-style extraction. `start_bit` is numbered exactly as in a DBC file.
+    Raises FrameTooShort if `data` is shorter than the signal needs."""
+    bits = bit_positions(start_bit, length, byte_order)
+    if max(p // 8 for p in bits) >= len(data):
+        raise FrameTooShort(f"frame has {len(data)} bytes, signal needs {max(p // 8 for p in bits) + 1}")
     raw = 0
-    if byte_order == "little_endian":            # Intel: start bit is the LSB
-        for i in range(length):
-            p = start_bit + i
+    if byte_order == "little_endian":
+        for i, p in enumerate(bits):
             raw |= ((data[p // 8] >> (p % 8)) & 1) << i
-    elif byte_order == "big_endian":             # Motorola: start bit is the MSB
-        p = start_bit
-        for _ in range(length):
-            raw = (raw << 1) | ((data[p // 8] >> (p % 8)) & 1)
-            p = (p // 8 + 1) * 8 + 7 if p % 8 == 0 else p - 1
     else:
-        raise ValueError(byte_order)
+        for p in bits:
+            raw = (raw << 1) | ((data[p // 8] >> (p % 8)) & 1)
     if signed and raw >= 1 << (length - 1):
         raw -= 1 << length
     return raw * scale + offset
@@ -203,6 +229,8 @@ STATUSES = {"active", "planned", "deprecated"}
 SOURCES = {"can", "adc", "i2c", "synthetic"}
 BYTE_ORDERS = {"big_endian", "little_endian"}
 CAN_SIGNAL_KEYS = {"bus", "start_bit", "length", "byte_order", "signed", "scale", "offset"}
+CHANNEL_KEYS = {"id", "name", "unit", "source", "rate_hz", "priority", "live", "log", "min", "max", "status", "src"}
+PARAM_KEYS = {"id", "name", "default", "min", "max", "unit"}
 
 
 def _check_can_src(ch: dict, reg: dict) -> None:
@@ -231,10 +259,14 @@ def _check_can_src(ch: dict, reg: dict) -> None:
         raise ValueError(f"channel {cid}: bad byte_order {s['byte_order']}")
     if not 1 <= s["length"] <= 32 or not 0 <= s["start_bit"] <= 63:
         raise ValueError(f"channel {cid}: bad start_bit/length")
+    if max(p // 8 for p in bit_positions(s["start_bit"], s["length"], s["byte_order"])) >= 8:
+        raise ValueError(f"channel {cid}: signal does not fit in an 8-byte CAN frame")
     mux = s.get("mux")
-    if mux is not None and (mux.keys() != {"start_bit", "length", "value"}
-                            or mux["value"] >= 1 << mux["length"]):
-        raise ValueError(f"channel {cid}: bad mux block")
+    if mux is not None:
+        if mux.keys() != {"start_bit", "length", "value"} or mux["value"] >= 1 << mux["length"]:
+            raise ValueError(f"channel {cid}: bad mux block")
+        if max(p // 8 for p in bit_positions(mux["start_bit"], mux["length"], s["byte_order"])) >= 8:
+            raise ValueError(f"channel {cid}: mux selector does not fit in an 8-byte CAN frame")
 
 
 def validate_registry(reg: object, source: str = "registry") -> dict:
@@ -243,6 +275,10 @@ def validate_registry(reg: object, source: str = "registry") -> dict:
         raise ValueError(f"{source}: not a registry (file empty, or missing params/channels)")
     seen_ids, seen_names = set(), set()
     for ch in reg["channels"]:
+        if missing := CHANNEL_KEYS - ch.keys():
+            raise ValueError(f"channel {ch.get('id', '?')}: missing {sorted(missing)}")
+        if ch["min"] > ch["max"]:
+            raise ValueError(f"channel {ch['id']}: min is greater than max")
         if not 1 <= ch["id"] <= 32767:
             raise ValueError(f"channel id out of range: {ch['id']}")
         if ch["id"] in seen_ids or ch["name"] in seen_names:
@@ -255,6 +291,11 @@ def validate_registry(reg: object, source: str = "registry") -> dict:
             _check_can_src(ch, reg)
         seen_ids.add(ch["id"])
         seen_names.add(ch["name"])
+    for p in reg["params"]:
+        if missing := PARAM_KEYS - p.keys():
+            raise ValueError(f"param {p.get('id', '?')}: missing {sorted(missing)}")
+        if not p["min"] <= p["default"] <= p["max"]:
+            raise ValueError(f"param {p['id']} ({p['name']}): default must be between min and max")
     pids = [p["id"] for p in reg["params"]]
     if len(pids) != len(set(pids)):
         raise ValueError("duplicate param id")
@@ -273,20 +314,26 @@ def can_frame_id(ch: dict, reg: dict) -> int:
 
 
 def extract_channel(data: bytes, ch: dict) -> float | None:
-    """Decode one CAN channel from a frame. Returns None when the channel is multiplexed
-    and this frame carries a different multiplexer value."""
+    """Decode one CAN channel from a frame. Returns None when the channel is multiplexed and this
+    frame carries a different multiplexer value, or when the frame is too short for the signal.
+    The multiplexer selector has the same byte order as the signal."""
     s = ch["src"]
     mux = s.get("mux")
-    if mux is not None:
-        sel = extract_signal(data, mux["start_bit"], mux["length"], "big_endian", False, 1, 0)
-        if sel != mux["value"]:
-            return None
-    return extract_signal(data, s["start_bit"], s["length"], s["byte_order"],
-                          s["signed"], s["scale"], s["offset"])
+    try:
+        if mux is not None:
+            sel = extract_signal(data, mux["start_bit"], mux["length"], s["byte_order"], False, 1, 0)
+            if sel != mux["value"]:
+                return None
+        return extract_signal(data, s["start_bit"], s["length"], s["byte_order"],
+                              s["signed"], s["scale"], s["offset"])
+    except FrameTooShort:
+        return None
 
 
 def apply_quality(value: float, ch: dict) -> tuple[float, int]:
-    """Clamp to registry range; flag it."""
+    """Clamp to the registry range and flag it. NaN is kept but flagged INVALID."""
+    if value != value:                                  # NaN
+        return value, Q_INVALID
     if value < ch["min"]:
         return float(ch["min"]), Q_CLAMPED
     if value > ch["max"]:

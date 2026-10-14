@@ -35,7 +35,7 @@ struct Channel {
   float max;
 };
 
-// CanSignal: where a CAN channel sits in a frame: value = raw * scale + offset (double, as in the Python codec). Row: {channel_id, frame_id, extended, bus, start_bit, length, big_endian, is_signed, scale, offset, has_mux, mux_start_bit, mux_length, mux_value}
+// CanSignal: where a CAN channel sits in a frame: value = raw * scale + offset (double, as in the Python codec). A mux selector has the same byte order as the signal. Row: {channel_id, frame_id, extended, bus, start_bit, length, big_endian, is_signed, scale, offset, has_mux, mux_start_bit, mux_length, mux_value}
 struct CanSignal {
   uint16_t channel_id;
   uint32_t frame_id;

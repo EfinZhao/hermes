@@ -24,24 +24,149 @@ def _can_channels(registry):
 
 
 def _bad_src_cases(good):
+    """name -> (broken src, text the error must contain)"""
+    no_id = {k: v for k, v in good["src"].items() if k != "can_id"}
     return {
-        "missing_key": {k: v for k, v in good["src"].items() if k != "scale"},
-        "both_id_forms": {**good["src"], "can_offset": 1},
-        "offset_without_base": {k: v for k, v in good["src"].items() if k != "can_id"} | {"can_offset": 1},
-        "unknown_base": {k: v for k, v in good["src"].items() if k != "can_id"} | {"can_base": "nope", "can_offset": 1},
-        "bad_byte_order": {**good["src"], "byte_order": "middle_endian"},
-        "mux_value_too_big": {**good["src"], "mux": {"start_bit": 7, "length": 2, "value": 4}},
+        "missing_key": ({k: v for k, v in good["src"].items() if k != "scale"}, "src missing ['scale']"),
+        "both_id_forms": ({**good["src"], "can_offset": 1}, "exactly one of can_id / can_offset"),
+        "offset_without_base": (no_id | {"can_offset": 1}, "can_base and can_offset go together"),
+        "unknown_base": (no_id | {"can_base": "nope", "can_offset": 1}, "'nope' is not in the registry's can_bases"),
+        "bad_byte_order": ({**good["src"], "byte_order": "middle_endian"}, "bad byte_order"),
+        "mux_value_too_big": ({**good["src"], "mux": {"start_bit": 7, "length": 2, "value": 4}}, "bad mux block"),
     }
 
 
-@pytest.mark.parametrize("case", ["missing_key", "both_id_forms", "offset_without_base", "unknown_base", "bad_byte_order", "mux_value_too_big"])
+@pytest.mark.parametrize("case", ["missing_key", "both_id_forms", "offset_without_base", "unknown_base",
+                                  "bad_byte_order", "mux_value_too_big"])
 def test_registry_rejects_bad_can_src(registry, tmp_path, case):
     good = _can_channels(registry)[0]
-    broken = {**registry, "channels": [{**good, "src": _bad_src_cases(good)[case]}]}
+    src, message = _bad_src_cases(good)[case]
+    broken = {**registry, "channels": [{**good, "src": src}]}
     path = tmp_path / "bad.yaml"
     path.write_text(yaml.safe_dump(broken))
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=message.replace("[", r"\[").replace("]", r"\]")):
         m.load_registry(str(path))
+
+
+# ---------------------------------------------------------------- validate_registry, one rule at a time
+def small_registry():
+    """A minimal valid registry: one param, one synthetic and one CAN channel."""
+    channel = {"id": 1, "name": "test.counter", "unit": "count", "source": "synthetic", "rate_hz": 10,
+               "priority": 1, "live": True, "log": True, "min": 0, "max": 100, "status": "active",
+               "src": {"kind": "counter"}}
+    can = {**channel, "id": 2, "name": "engine.speed_rpm", "source": "can",
+           "src": {"can_id": 0x640, "bus": 0, "start_bit": 7, "length": 16, "byte_order": "big_endian",
+                   "signed": False, "scale": 1.0, "offset": 0.0}}
+    return {"registry_version": 1, "device_id": 1,
+            "params": [{"id": 1, "name": "batch_window_ms", "default": 100, "min": 20, "max": 1000, "unit": "ms"}],
+            "channels": [channel, can]}
+
+
+def test_small_registry_is_valid():
+    m.validate_registry(small_registry())
+
+
+def edit_channel(**changes):
+    def apply(reg):
+        reg["channels"][0].update(changes)
+    return apply
+
+
+def edit_can_src(**changes):
+    def apply(reg):
+        reg["channels"][1]["src"].update(changes)
+    return apply
+
+
+def drop_channel_key(key):
+    def apply(reg):
+        del reg["channels"][0][key]
+    return apply
+
+
+def duplicate_param(reg):
+    reg["params"].append({**reg["params"][0], "name": "other"})
+
+
+def edit_param(**changes):
+    def apply(reg):
+        reg["params"][0].update(changes)
+    return apply
+
+
+def drop_param_key(key):
+    def apply(reg):
+        del reg["params"][0][key]
+    return apply
+
+
+REJECTIONS = {
+    "id_zero": (edit_channel(id=0), "channel id out of range: 0"),
+    "id_too_big": (edit_channel(id=32768), "channel id out of range: 32768"),
+    "duplicate_id": (edit_channel(id=2), "duplicate channel id/name: 2"),
+    "duplicate_name": (edit_channel(name="engine.speed_rpm"), "duplicate channel id/name: 2 engine.speed_rpm"),
+    "bad_status": (edit_channel(status="retired"), "bad status/source on channel 1"),
+    "bad_source": (edit_channel(source="radio"), "bad status/source on channel 1"),
+    "priority_2_without_decimate": (edit_channel(priority=2), "priority 2 channel 1 needs live_decimate"),
+    "missing_unit": (drop_channel_key("unit"), r"channel 1: missing \['unit'\]"),
+    "missing_min": (drop_channel_key("min"), r"channel 1: missing \['min'\]"),
+    "missing_rate": (drop_channel_key("rate_hz"), r"channel 1: missing \['rate_hz'\]"),
+    "channel_min_above_max": (edit_channel(min=10, max=5), "channel 1: min is greater than max"),
+    "duplicate_param_id": (duplicate_param, "duplicate param id"),
+    "param_missing_default": (drop_param_key("default"), r"param 1: missing \['default'\]"),
+    "param_min_above_max": (edit_param(min=500, max=100, default=200), "param 1 .*default must be between min and max"),
+    "param_default_below_min": (edit_param(default=10), "default must be between min and max"),
+    "param_default_above_max": (edit_param(default=2000), "default must be between min and max"),
+    "can_start_bit_too_big": (edit_can_src(start_bit=64), "bad start_bit/length"),
+    "can_length_zero": (edit_can_src(length=0), "bad start_bit/length"),
+    "can_length_too_long": (edit_can_src(length=33), "bad start_bit/length"),
+    "can_signal_runs_off_the_frame": (edit_can_src(start_bit=63, length=16), "does not fit in an 8-byte CAN frame"),
+    "can_little_endian_runs_off_the_frame": (edit_can_src(byte_order="little_endian", start_bit=56, length=16),
+                                             "does not fit in an 8-byte CAN frame"),
+    "mux_missing_key": (edit_can_src(mux={"start_bit": 0, "length": 2}), "bad mux block"),
+    "mux_extra_key": (edit_can_src(mux={"start_bit": 0, "length": 2, "value": 1, "bits": 3}), "bad mux block"),
+    "mux_selector_off_the_frame": (edit_can_src(mux={"start_bit": 60, "length": 8, "value": 1}),
+                                   "mux selector does not fit"),
+}
+
+
+@pytest.mark.parametrize("case", REJECTIONS)
+def test_validate_registry_rejects(case):
+    edit, message = REJECTIONS[case]
+    reg = small_registry()
+    edit(reg)
+    with pytest.raises(ValueError, match=message):
+        m.validate_registry(reg)
+
+
+def test_registry_without_params_or_channels_is_rejected():
+    for reg in ({}, {"params": []}, {"channels": []}, None, [1, 2]):
+        with pytest.raises(ValueError, match="not a registry"):
+            m.validate_registry(reg)
+
+
+def test_min_equal_to_max_and_default_on_a_limit_are_accepted():
+    reg = small_registry()
+    reg["channels"][0].update(min=5, max=5)
+    reg["params"][0].update(default=20)                  # equals min
+    m.validate_registry(reg)
+
+
+# ---------------------------------------------------------------- demo channels map to the intended signals
+DEMO_SIGNALS = {
+    100: "Engine_Speed", 101: "Coolant_Temperature", 102: "ECU_Battery_Voltage",
+    300: "Inlet_Manifold_Pressure", 302: "Throttle_Position", 338: "Wheel_Speed_Front_Left",
+}
+
+
+@pytest.mark.parametrize("channel_id, signal_name", DEMO_SIGNALS.items())
+def test_demo_channels_map_to_the_intended_dbc_signal(registry, m130_db, channel_id, signal_name):
+    ch = next(c for c in registry["channels"] if c["id"] == channel_id)
+    assert ch["status"] == "active"
+    s = ch["src"]
+    msg = m130_db.get_message_by_frame_id(m.can_frame_id(ch, registry))
+    sig = next(x for x in msg.signals if x.start == s["start_bit"] and x.length == s["length"])
+    assert sig.name == signal_name
 
 
 def test_empty_registry_gives_clear_error(tmp_path):

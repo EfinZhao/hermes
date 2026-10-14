@@ -123,7 +123,7 @@ STRUCTS = {
                 "samples goes live).",
                 [("uint16_t", "id"), ("Source", "source"), ("uint8_t", "priority"), ("bool", "live"), ("bool", "log"),
                  ("uint16_t", "live_decimate"), ("float", "rate_hz"), ("float", "min"), ("float", "max")]),
-    "CanSignal": ("where a CAN channel sits in a frame: value = raw * scale + offset (double, as in the Python codec).",
+    "CanSignal": ("where a CAN channel sits in a frame: value = raw * scale + offset (double, as in the Python codec). A mux selector has the same byte order as the signal.",
                   [("uint16_t", "channel_id"), ("uint32_t", "frame_id"), ("bool", "extended"), ("uint8_t", "bus"),
                    ("uint8_t", "start_bit"), ("uint8_t", "length"), ("bool", "big_endian"), ("bool", "is_signed"),
                    ("double", "scale"), ("double", "offset"), ("bool", "has_mux"), ("uint8_t", "mux_start_bit"),

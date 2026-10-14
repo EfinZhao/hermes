@@ -81,7 +81,9 @@ def candidates(dev: dict, db):
                 continue
             mux = None
             if sig.multiplexer_ids:
-                assert sel is not None and sel.byte_order == "big_endian" and not sel.is_signed
+                if sel.byte_order != sig.byte_order or sel.is_signed:
+                    raise SystemExit(f"{dev['name']}: multiplexer selector {sel.name} must be unsigned and have the same "
+                                     f"byte order as {sig.name}")
                 mux = (sel.start, sel.length, sig.multiplexer_ids[0])
             addr = {"can_base": dev["name"], "can_offset": off}
             if msg.is_extended_frame:
