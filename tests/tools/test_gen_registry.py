@@ -121,9 +121,10 @@ def test_generated_header_compiles(released, tmp_path):
     assert result.returncode == 0, result.stderr
 
 
-def test_committed_generated_files_are_up_to_date():
-    """Fails if registry.yaml was edited without re-running tools/gen_registry.py."""
-    assert gen.main(["--check"]) == 0
+def test_committed_generated_files_are_up_to_date(tmp_path):
+    """Fails if registry.yaml was edited without re-running tools/gen_registry.py. Uses an empty
+    archive so the result does not depend on whatever snapshots a developer has locally."""
+    assert gen.main(["--check", "--archive", str(tmp_path)]) == 0
 
 
 # ---------------------------------------------------------------- allowed edits
@@ -256,6 +257,23 @@ def test_bump_raises_version_when_changed(released):
     assert code == 0, err
     assert yaml.safe_load(env.registry.read_text())["registry_version"] == 2
     assert (env.archive / "registry_v2.json").exists()
+
+
+def test_bump_keeps_comments_and_formatting(released):
+    """--bump rewrites only the version number, because registry.yaml is a hand-edited file with comments."""
+    env, reg = released
+    new = copy.deepcopy(reg)
+    new["channels"][0]["rate_hz"] = 99
+    lines = yaml.safe_dump(new).splitlines()
+    lines = [("registry_version: 1   # raised by gen_registry --bump" if l == "registry_version: 1" else l)
+             for l in lines]
+    text = "# top-of-file comment\n\n" + "\n".join(lines) + "\n# trailing comment\n"
+    env.registry.write_text(text)
+    code = gen.main(["--registry", str(env.registry), "--archive", str(env.archive),
+                     "--header", str(env.header), "--bump"])
+    assert code == 0, env.capsys.readouterr().err
+    expected = text.replace("registry_version: 1   #", "registry_version: 2   #")
+    assert env.registry.read_text() == expected          # nothing else in the file changed
 
 
 def test_bump_does_nothing_when_unchanged(released):
