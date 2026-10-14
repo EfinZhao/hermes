@@ -208,7 +208,8 @@ CAN_SIGNAL_KEYS = {"bus", "start_bit", "length", "byte_order", "signed", "scale"
 def _check_can_src(ch: dict, reg: dict) -> None:
     """A CAN channel is addressed either by an absolute `can_id`, or by `can_base` + `can_offset`
     where `can_base` names an entry of the registry's `can_bases` table (devices whose CAN ids are
-    set by a configurable base, like an expansion unit). Multiplexed signals add a `mux` block."""
+    set by a configurable base, like an expansion unit). `extended: true` marks 29-bit ids.
+    Multiplexed signals add a `mux` block."""
     s = ch["src"]
     cid = ch["id"]
     missing = CAN_SIGNAL_KEYS - s.keys()
@@ -220,6 +221,12 @@ def _check_can_src(ch: dict, reg: dict) -> None:
         raise ValueError(f"channel {cid}: can_base and can_offset go together")
     if "can_base" in s and s["can_base"] not in (reg.get("can_bases") or {}):
         raise ValueError(f"channel {cid}: can_base {s['can_base']!r} is not in the registry's can_bases")
+    if not isinstance(s.get("extended", False), bool):
+        raise ValueError(f"channel {cid}: extended must be true or false")
+    frame_id = s["can_id"] if "can_id" in s else reg["can_bases"][s["can_base"]] + s["can_offset"]
+    if frame_id > (0x1FFFFFFF if s.get("extended") else 0x7FF):
+        raise ValueError(f"channel {cid}: CAN id 0x{frame_id:X} is too large"
+                         + ("" if s.get("extended") else " for a standard frame; set extended: true for 29-bit ids"))
     if s["byte_order"] not in BYTE_ORDERS:
         raise ValueError(f"channel {cid}: bad byte_order {s['byte_order']}")
     if not 1 <= s["length"] <= 32 or not 0 <= s["start_bit"] <= 63:

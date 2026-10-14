@@ -77,3 +77,36 @@ def test_two_units_of_the_same_device(tmp_path):
     assert all(1000 <= c["id"] < 1100 for c in by_base["e888"])
     assert all(c["id"] >= 1100 for c in by_base["e888_rear"])
     assert run_importer("--registry", str(target), "--config", str(cfg_path), "--dry-run").strip() == "0 channels to add"
+
+
+def test_extended_frames_flow_from_dbc_to_registry_to_header(tmp_path):
+    """A 29-bit frame whose id is below 0x7FF must stay extended all the way to the C++ header."""
+    import cantools
+    import yaml
+    import gen_registry
+    from cantools.database.can import Message, Signal
+    from cantools.database.conversion import BaseConversion
+
+    def sig(name):
+        return Signal(name, start=7, length=16, byte_order="big_endian", unit="km/h",
+                      conversion=BaseConversion.factory(scale=0.1, offset=0))
+
+    db = cantools.database.Database(messages=[
+        Message(0x100, "Extended", 8, [sig("Speed")], is_extended_frame=True),
+        Message(0x200, "Standard", 8, [sig("Other")]),
+    ])
+    dbc = tmp_path / "ext.dbc"
+    cantools.database.dump_file(db, str(dbc))
+    cfg = {"devices": [{"name": "ext", "dbc": str(dbc), "first_id": 300, "active": ["Speed", "Other"]}]}
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(yaml.safe_dump(cfg))
+    target = tmp_path / "registry.yaml"
+    run_importer("--registry", str(target), "--config", str(cfg_path))
+
+    by_name = {c["name"]: c for c in msgcodec.load_registry(str(target))["channels"] if c["source"] == "can"}
+    assert by_name["speed.kmh"]["src"]["extended"] is True and by_name["speed.kmh"]["src"]["can_id"] == 0x100
+    assert "extended" not in by_name["other.kmh"]["src"]
+    header = tmp_path / "registry_gen.h"
+    assert gen_registry.main(["--registry", str(target), "--archive", str(tmp_path / "a"), "--header", str(header)]) == 0
+    text = header.read_text()
+    assert "0x100, true," in text and "0x200, false," in text

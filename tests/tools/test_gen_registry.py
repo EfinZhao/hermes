@@ -154,6 +154,66 @@ def test_planned_can_become_active_and_active_can_be_deprecated(released):
     assert code == 0, err
 
 
+def test_planned_channel_can_change_meaning_and_be_deleted(released):
+    """Rules start at first active: a planned channel never shipped, so it is free to change."""
+    env, reg = released
+    reg2 = copy.deepcopy(reg)
+    reg2["channels"] += [channel(60, "plan.a", status="planned"), channel(61, "plan.b", status="planned")]
+    reg2["registry_version"] = 2
+    env.release(reg2)
+    reg3 = next_version(reg2)
+    reg3["channels"][2].update(unit="kPa", source="adc", src={"adc_channel": 3})   # meaning changed
+    del reg3["channels"][3]                                                       # deleted
+    code, err = env.run(reg3)
+    assert code == 0, err
+
+
+def test_rules_start_at_first_active_and_stay(released):
+    """Once a channel has been active, even moving it back to planned does not free its meaning."""
+    env, reg = released
+    reg2 = copy.deepcopy(reg)
+    reg2["channels"].append(channel(60, "later", status="planned"))
+    reg2["registry_version"] = 2
+    env.release(reg2)
+    reg3 = next_version(reg2)
+    reg3["channels"][2]["status"] = "active"
+    env.release(reg3)
+    reg4 = next_version(reg3)
+    reg4["channels"][2].update(status="planned", unit="kPa")
+    rejected(env, reg4, "`unit` changed")
+    reg5 = next_version(reg3)
+    del reg5["channels"][2]
+    rejected(env, reg5, "was deleted")
+
+
+def test_changing_a_can_base_is_allowed_and_moves_frame_ids(env):
+    """A base id is hardware configuration, not channel meaning: it needs a version bump, nothing more."""
+    reg = base_registry()
+    src = {"can_base": "unit", "can_offset": 1, "bus": 0, "start_bit": 7, "length": 8, "byte_order": "big_endian",
+           "signed": False, "scale": 1.0, "offset": 0.0}
+    reg["channels"].append(channel(300, "unit.input", source="can", src=src))
+    env.release(reg)
+    assert "{300, 0x11," in env.header.read_text()
+    moved = next_version(reg)
+    moved["can_bases"]["unit"] = 0x20
+    code, err = env.run(moved)
+    assert code == 0, err
+    assert "{300, 0x21," in env.header.read_text()
+    code, err = env.run(reg)                                                       # old base without a bump
+    assert code == 1 and "older than archived" in err
+
+
+def test_header_extended_flag_comes_from_the_registry(env):
+    reg = base_registry()
+    ext_low = can_channel(300, "ext.low_id")                      # 29-bit frame whose id is below 0x7FF
+    ext_low["src"].update(can_id=0x100, extended=True)
+    reg["channels"].append(ext_low)
+    env.release(reg)
+    header = env.header.read_text()
+    assert "{300, 0x100, true," in header
+    assert "{100, 0x640, false," in header
+
+
 # ---------------------------------------------------------------- rejections
 def rejected(env, reg, text):
     code, err = env.run(reg)

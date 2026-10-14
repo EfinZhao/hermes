@@ -3,9 +3,10 @@
 Usage: uv run python tools/gen_registry.py [--check] [--bump] [--registry P] [--archive D] [--header P]
 
   1. Checks the append-only rules against every snapshot in messaging/registry_archive/:
-     no channel or param may be deleted, no id may change meaning (unit, source, src), a
-     deprecated channel stays deprecated, and registry_version must go up by exactly 1 when
-     anything changed (and stay the same when nothing did).
+     once a channel has been active it may not be deleted and its id may not change meaning
+     (unit, source, src); a deprecated channel stays deprecated; params may not be deleted; and
+     registry_version must go up by exactly 1 when anything changed (and stay the same when
+     nothing did). Planned channels are free to change until they are first active.
   2. Writes messaging/registry_archive/registry_vN.json, a snapshot of this version. The archive
      is local (git-ignored): each team keeps its own, and the rules only compare against the
      snapshots found there. With no snapshots the rules have nothing to check.
@@ -75,6 +76,8 @@ def check_rules(reg: dict, snaps: dict[int, dict]) -> list[str]:
         old = snaps[v]
         for oc in old["channels"]:
             cid, cur = oc["id"], channels.get(oc["id"])
+            if oc["status"] == "planned":        # never shipped: free to change or delete until first active
+                continue
             if cur is None:
                 err(("del", cid), f"channel {cid} ({oc['name']}) was deleted; set `status: deprecated` instead (v{v} has it)")
                 continue
@@ -196,7 +199,7 @@ def render_header(reg: dict) -> str:
         s, fid = c["src"], msgcodec.can_frame_id(c, reg)
         mux = s.get("mux")
         mux_fields = (f"true, {mux['start_bit']}, {mux['length']}, {mux['value']}" if mux else "false, 0, 0, 0")
-        out.append(f"    {{{c['id']}, 0x{fid:X}, {cpp_bool(fid > 0x7FF)}, {s['bus']}, {s['start_bit']}, {s['length']}, "
+        out.append(f"    {{{c['id']}, 0x{fid:X}, {cpp_bool(s.get('extended', False))}, {s['bus']}, {s['start_bit']}, {s['length']}, "
                    f"{cpp_bool(s['byte_order'] == 'big_endian')}, {cpp_bool(s['signed'])}, "
                    f"{cpp_double(s['scale'])}, {cpp_double(s['offset'])}, {mux_fields}}},  // {c['name']}")
     out += ["};", "", "}  // namespace registry", ""]

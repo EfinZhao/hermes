@@ -68,7 +68,10 @@ def candidates(dev: dict, db):
                 continue
             for sig in msg.signals:
                 if sig.unit or sig.name in keep:
-                    yield ("id", msg.frame_id, sig.start, sig.length, None), sig, {"can_id": f"0x{msg.frame_id:X}"}, None
+                    addr = {"can_id": f"0x{msg.frame_id:X}"}
+                    if msg.is_extended_frame:
+                        addr["extended"] = "true"
+                    yield ("id", msg.frame_id, msg.is_extended_frame, sig.start, sig.length, None), sig, addr, None
         return
     for off in dev["offsets"]:                                 # CAN id = base + offset
         msg = db.get_message_by_frame_id(dev["base_id"] + off)
@@ -80,8 +83,10 @@ def candidates(dev: dict, db):
             if sig.multiplexer_ids:
                 assert sel is not None and sel.byte_order == "big_endian" and not sel.is_signed
                 mux = (sel.start, sel.length, sig.multiplexer_ids[0])
-            yield ("base", dev["name"], off, sig.start, sig.length, mux), sig, \
-                {"can_base": dev["name"], "can_offset": off}, mux
+            addr = {"can_base": dev["name"], "can_offset": off}
+            if msg.is_extended_frame:
+                addr["extended"] = "true"
+            yield ("base", dev["name"], off, sig.start, sig.length, mux), sig, addr, mux
 
 
 def existing_keys(reg: dict) -> set:
@@ -92,7 +97,7 @@ def existing_keys(reg: dict) -> set:
         s = ch["src"]
         mux = (s["mux"]["start_bit"], s["mux"]["length"], s["mux"]["value"]) if "mux" in s else None
         if "can_id" in s:
-            keys.add(("id", s["can_id"], s["start_bit"], s["length"], mux))
+            keys.add(("id", s["can_id"], s.get("extended", False), s["start_bit"], s["length"], mux))
         else:
             keys.add(("base", s["can_base"], s["can_offset"], s["start_bit"], s["length"], mux))
     return keys
