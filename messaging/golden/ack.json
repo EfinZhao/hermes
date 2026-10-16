@@ -1,0 +1,114 @@
+{
+  "description": "ACK packets: the reply to a CONFIG.",
+  "format_version": 1,
+  "magic": "0x4d48",
+  "header_bytes": 20,
+  "footer_bytes": 4,
+  "cases": [
+    {
+      "name": "status_applied",
+      "description": "Acknowledges seq 7 with status 0 (applied).",
+      "kind": "encode",
+      "msg_type": "ACK",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 100, "base_ms": 0, "flags": 0},
+      "records": [
+        {"acked_seq": 7, "status": 0}
+      ],
+      "packets": [
+        {
+          "hex": "484d01031400010064000000000000000100050007000000001c7d61b9",
+          "size": 29,
+          "header": {"msg_type": 3, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 100, "base_ms": 0, "record_count": 1, "payload_len": 5},
+          "crc32": "0xb9617d1c",
+          "records": [
+            {"acked_seq": 7, "status": 0}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status_out_of_range",
+      "description": "Acknowledges seq 7 with status 1 (out_of_range).",
+      "kind": "encode",
+      "msg_type": "ACK",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 101, "base_ms": 0, "flags": 0},
+      "records": [
+        {"acked_seq": 7, "status": 1}
+      ],
+      "packets": [
+        {
+          "hex": "484d0103140001006500000000000000010005000700000001c986c049",
+          "size": 29,
+          "header": {"msg_type": 3, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 101, "base_ms": 0, "record_count": 1, "payload_len": 5},
+          "crc32": "0x49c086c9",
+          "records": [
+            {"acked_seq": 7, "status": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status_unknown_param",
+      "description": "Acknowledges seq 7 with status 2 (unknown_param).",
+      "kind": "encode",
+      "msg_type": "ACK",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 102, "base_ms": 0, "flags": 0},
+      "records": [
+        {"acked_seq": 7, "status": 2}
+      ],
+      "packets": [
+        {
+          "hex": "484d0103140001006600000000000000010005000700000002f78c5383",
+          "size": 29,
+          "header": {"msg_type": 3, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 102, "base_ms": 0, "record_count": 1, "payload_len": 5},
+          "crc32": "0x83538cf7",
+          "records": [
+            {"acked_seq": 7, "status": 2}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status_bad_registry",
+      "description": "Acknowledges seq 7 with status 3 (bad_registry).",
+      "kind": "encode",
+      "msg_type": "ACK",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 103, "base_ms": 0, "flags": 0},
+      "records": [
+        {"acked_seq": 7, "status": 3}
+      ],
+      "packets": [
+        {
+          "hex": "484d01031400010067000000000000000100050007000000032277f273",
+          "size": 29,
+          "header": {"msg_type": 3, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 103, "base_ms": 0, "record_count": 1, "payload_len": 5},
+          "crc32": "0x73f27722",
+          "records": [
+            {"acked_seq": 7, "status": 3}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "largest_acked_seq",
+      "description": "Acknowledges the largest sequence number.",
+      "kind": "encode",
+      "msg_type": "ACK",
+      "params": {"device_id": 20, "registry_version": 1, "seq": 0, "base_ms": 0, "flags": 0},
+      "records": [
+        {"acked_seq": 4294967295, "status": 0}
+      ],
+      "packets": [
+        {
+          "hex": "484d010314000100000000000000000001000500ffffffff002fd97132",
+          "size": 29,
+          "header": {"msg_type": 3, "device_id": 20, "flags": 0, "registry_version": 1, "seq": 0, "base_ms": 0, "record_count": 1, "payload_len": 5},
+          "crc32": "0x3271d92f",
+          "records": [
+            {"acked_seq": 4294967295, "status": 0}
+          ]
+        }
+      ]
+    }
+  ]
+}

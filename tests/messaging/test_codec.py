@@ -2,6 +2,7 @@
 import pytest
 
 import msgcodec as m
+from conftest import crc32_reference
 
 
 def test_sizes():
@@ -20,16 +21,6 @@ def test_roundtrip_data():
     assert (chan, dt, q) == (100, 0, 0) and val == 8000.0
     assert any(r[0] == 101 and r[2] == 91.5 and r[3] == m.Q_CLAMPED for r in p.records)
     assert len(buf) == m.OVERHEAD + 6 * m.SAMPLE.size
-
-
-def crc32_reference(data: bytes) -> int:
-    """Bit-by-bit CRC-32 (IEEE), independent of zlib, as the firmware will have to write it."""
-    crc = 0xFFFFFFFF
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = (crc >> 1) ^ (0xEDB88320 if crc & 1 else 0)
-    return crc ^ 0xFFFFFFFF
 
 
 def test_reference_crc_matches_the_standard_vector():

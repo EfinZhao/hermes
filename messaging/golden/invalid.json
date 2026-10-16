@@ -1,0 +1,17 @@
+{
+  "description": "Packets every decoder must reject. `error` is the reason, the same for all implementations.",
+  "format_version": 1,
+  "magic": "0x4d48",
+  "header_bytes": 20,
+  "footer_bytes": 4,
+  "cases": [
+    {"name": "too_short", "description": "Fewer bytes than a header plus a CRC.", "kind": "invalid", "hex": "484d01001400010000000000e803000001000900640000", "error": "too_short", "python_message": "too short"},
+    {"name": "bad_magic", "description": "Wrong magic number (CRC is valid).", "kind": "invalid", "hex": "000001001400010000000000e803000001000900640000000000fa45004244b9c9", "error": "bad_magic", "python_message": "bad magic"},
+    {"name": "unsupported_format_version", "description": "Format version 9 (CRC is valid).", "kind": "invalid", "hex": "484d09001400010000000000e803000001000900640000000000fa45007ccfe4b4", "error": "unsupported_format_version", "python_message": "unsupported format version 9"},
+    {"name": "trailing_byte", "description": "One extra byte after the CRC.", "kind": "invalid", "hex": "484d01001400010000000000e803000001000900640000000000fa4500f619667600", "error": "length_mismatch", "python_message": "length mismatch"},
+    {"name": "truncated", "description": "The last record byte and CRC are missing.", "kind": "invalid", "hex": "484d01001400010000000000e803000001000900640000000000fa45", "error": "length_mismatch", "python_message": "length mismatch"},
+    {"name": "flipped_payload_bit", "description": "One bit changed in a record.", "kind": "invalid", "hex": "484d01001400010000000000e803000001000900650000000000fa4500f6196676", "error": "crc_mismatch", "python_message": "crc mismatch"},
+    {"name": "flipped_crc_bit", "description": "One bit changed in the CRC.", "kind": "invalid", "hex": "484d01001400010000000000e803000001000900640000000000fa4500f6196677", "error": "crc_mismatch", "python_message": "crc mismatch"},
+    {"name": "record_count_mismatch", "description": "record_count is 2 but the payload holds one record (CRC is valid).", "kind": "invalid", "hex": "484d01001400010000000000e803000002000900640000000000fa45003875accb", "error": "record_count_mismatch", "python_message": "record count does not match payload length"}
+  ]
+}

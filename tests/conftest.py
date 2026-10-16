@@ -25,3 +25,13 @@ def m130_db():
 @pytest.fixture(scope="session")
 def e888_db():
     return cantools.database.load_file(str(E888_DBC))
+
+
+def crc32_reference(data: bytes) -> int:
+    """Bit-by-bit CRC-32 (IEEE), independent of zlib, as the firmware will have to write it."""
+    crc = 0xFFFFFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            crc = (crc >> 1) ^ (0xEDB88320 if crc & 1 else 0)
+    return crc ^ 0xFFFFFFFF
