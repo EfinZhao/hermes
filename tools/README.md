@@ -1,7 +1,7 @@
 # tools
 
-Command-line scripts for building and checking the messaging contract in `messaging/`, plus a fake device for testing receivers.
-The tools import `messaging/msgcodec.py` and nothing from `firmware/` or `receiver/`. Run them from the repo root with `uv run`.
+Command-line scripts for building and checking the messaging contract in `messaging/`, and for validating what the firmware sends: a fake device and a receiver.
+The tools import `messaging/msgcodec.py` and nothing from `firmware/`. Run them from the repo root with `uv run`.
 
 | Tool | What it does | Writes |
 |---|---|---|
@@ -9,6 +9,7 @@ The tools import `messaging/msgcodec.py` and nothing from `firmware/` or `receiv
 | `gen_registry.py` | Checks the registry's append-only rules, writes the firmware header and a snapshot | `firmware/main/registry_gen.h`, `messaging/registry_archive/registry_vN.json` |
 | `make_golden.py` | Writes the golden packets, the byte-exact answer key for every implementation | `messaging/golden/*.json` |
 | `fake_car.py` | Pretends to be the device and sends DATA packets over UDP | no files; it only sends UDP |
+| `receiver/` | Receives a device's packets over UDP, checks them (CRC, gaps, repeats, reboots) and decodes the values | no files; it prints values, events and a summary |
 
 ## Typical workflow
 
@@ -16,7 +17,7 @@ The tools import `messaging/msgcodec.py` and nothing from `firmware/` or `receiv
 2. Edit `messaging/registry.yaml` by hand if needed (real `rate_hz`, `priority`, `live`, `status`).
 3. Run `gen_registry.py --bump`, then commit `registry.yaml` and `registry_gen.h` together.
 4. After any change to `msgcodec.py`, run `make_golden.py` and commit the golden files with the change.
-5. Use `fake_car.py` to feed a receiver without hardware.
+5. Run `receiver/receiver.py` on the laptop to check what the device sends. With no hardware, feed it from `fake_car.py`.
 
 `gen_registry.py --check` and `make_golden.py --check` change nothing and fail if the committed files are stale, so they can run in CI.
 
@@ -92,7 +93,7 @@ uv run python tools/make_golden.py [--check] [--out DIR]
 
 ## fake_car.py
 
-Pretends to be the device, so you can build and test a receiver without a car, a CAN bus or an ESP32.
+Pretends to be the device, so you can test the receiver without a car, a CAN bus or an ESP32.
 It follows the same rules as the real LIVE stream:
 
 - It samples every channel that is `status: active` and `live: true` at its registry `rate_hz`. Priority 2 channels send 1 of every `live_decimate` samples.
@@ -135,6 +136,21 @@ To look at the raw bytes without a receiver, run `nc -u -l 5005 | xxd` in anothe
 
 Known issue: `--reorder` currently has no visible effect with the default registry. The script applies network faults one batch window at a time, and with the default registry each window holds a single packet, so a held-back packet comes out in its original place.
 
+## receiver/
+
+Validates what a device sends, on the laptop. It checks every packet (corrupt ones are dropped and counted by reason), counts lost, late and repeated packets per device, spots reboots, and decodes the values with the registry version each packet names. Full details, flags and limits are in `receiver/README.md`.
+
+```
+uv run python tools/receiver/receiver.py [--host H] [--port P] [--registry PATH] [--archive DIR] [--quiet] [--idle-exit S]
+```
+
+Run it next to the fake car to see the whole path with no hardware:
+
+```
+uv run python tools/receiver/receiver.py                     # terminal 1
+uv run python tools/fake_car.py --duration 10 --loss 0.1     # terminal 2
+```
+
 ## Tests
 
-Each tool has tests in `tests/tools/` (`test_import_can_csv.py`, `test_gen_registry.py`, `test_fake_car.py`); `make_golden.py` is covered by `tests/golden/test_golden.py`. Run everything with `uv run pytest`.
+Each tool has tests in `tests/tools/` (`test_import_can_csv.py`, `test_gen_registry.py`, `test_fake_car.py`, and `receiver/` for the receiver); `make_golden.py` is covered by `tests/golden/test_golden.py`. Run everything with `uv run pytest`.
